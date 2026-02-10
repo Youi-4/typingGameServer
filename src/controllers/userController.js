@@ -53,8 +53,8 @@ async function userLogin(req, res) {
             const isDev = process.env.NODE_ENV !== "production";
             res.cookie("token", token, {
                 httpOnly: true,
-                secure: !isDev,
-                sameSite: isDev ? false : "strict",
+                secure: true,
+                sameSite: isDev ? "lax" : "none",
                 maxAge: 7 * 24 * 60 * 60 * 1000
             });
 
