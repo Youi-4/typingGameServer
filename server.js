@@ -18,7 +18,7 @@ const app = express();
 /* ------------------ Middleware ------------------ */
 
 const corsOptions = {
-  origin: "http://localhost:5173",
+  origin: process.env.CLIENT_URL || "http://localhost:5173",
   credentials: true,
   methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
   allowedHeaders: ["Content-Type", "Authorization"]
@@ -43,7 +43,7 @@ const httpServer = createServer(app);
 // Attach Socket.IO to the SAME server + port
 const io = new Server(httpServer, {
   cors: {
-    origin: "http://localhost:5173",
+    origin: process.env.CLIENT_URL || "http://localhost:5173",
     credentials: true
   }
 });
@@ -121,7 +121,7 @@ io.on("connection", (socket) => {
 
 /* ------------------ Start Server ------------------ */
 
-const PORT = process.env.SERVER_PORT || 3000;
+const PORT = process.env.PORT || 3000;
 
 httpServer.listen(PORT, () => {
   console.log(`Server started on port ${PORT}`);
