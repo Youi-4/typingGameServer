@@ -24,7 +24,7 @@ async function userLogin(req, res) {
             });
         }
 
-        const user = await getUserByEmail(userName_or_email.toLowerCase());
+        let user = await getUserByEmail(userName_or_email.toLowerCase());
         if (!user) {
             user = await getUserByUserName(userName_or_email.toLowerCase());
             if(!user){
@@ -36,15 +36,15 @@ async function userLogin(req, res) {
 
         }
 
-        const isMatch = await bcrypt.compare(password, user.Password);
+        const isMatch = await bcrypt.compare(password, user.password);
         
         if (isMatch) {
             const sessionId = crypto.randomBytes(32).toString("hex");
-            await updateSessionId(user.AccountID, sessionId);
+            await updateSessionId(user.accountid, sessionId);
 
             // Generate JWT token with the fields expected by auth middleware
             const token = jwt.sign(
-                { account_id: user.AccountID, email: user.EmailAddress, session_id: sessionId },
+                { account_id: user.accountid, email: user.emailaddress, session_id: sessionId },
                 process.env.SECRET_KEY || "your-secret-key",
                 { expiresIn: "7d" }
             );
@@ -62,9 +62,9 @@ async function userLogin(req, res) {
                 success: true,
                 message: "Login successful",
                 user: {
-                    id: user.AccountID,
-                    email: user.EmailAddress,
-                    name: user.name
+                    id: user.accountid,
+                    email: user.emailaddress,
+                    name: user.user
                 }
             });
         } else {

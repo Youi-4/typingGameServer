@@ -91,8 +91,8 @@ io.use(async (socket, next) => {
     if (!user) return next(new Error("User not found"));
 
     // Attach user info to the socket for later use
-    socket.username = user.User;
-    socket.accountId = user.AccountID;
+    socket.username = user.user;
+    socket.accountId = user.accountid;
     console.log(`Socket authenticated: ${socket.username}`);
     next();
   } catch (err) {

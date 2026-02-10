@@ -26,7 +26,7 @@ export async function verifyToken(req, res, next) {
         }
 
     const user = await getUserByAccountID(decoded.account_id);
-    if (!user || !user.SessionId || user.SessionId !== decoded.session_id) {
+    if (!user || !user.sessionid || user.sessionid !== decoded.session_id) {
       res.clearCookie('token');
       return res.status(401).json({ error: 'Session invalidated. Please login again' });
     }
