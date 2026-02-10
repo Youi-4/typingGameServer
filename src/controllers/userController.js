@@ -3,7 +3,7 @@ import crypto from "crypto";
 import jwt from "jsonwebtoken";
 import dotenv from "dotenv";
 dotenv.config();
-import { getUserByEmail, createAccount, updateSessionId,getUserByUserName } from "../models/userModel.js";
+import { getUserByEmail, createAccount, updateSessionId, getUserByUserName, getUserBySessionID } from "../models/userModel.js";
 
 async function userLogin(req, res) {
     try {
@@ -109,7 +109,7 @@ async function getUserBySession(req,res){
   try {
     const { sessionId} = req.body;
     // add validation here
-    const user = await getUserBySessionId(sessionId);
+    const user = await getUserBySessionID(sessionId);
     
     if (user){
         res.status(201).json({ message: user });
