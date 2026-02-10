@@ -1,14 +1,9 @@
 import db from "../db/db.js";
 
-// async function getAccounts(){
-// const [rows] = await pool.query("SELECT * FROM Account")
-// return rows
-// }
-
 export async function getUserByEmail(email){
     try{
-        const query =`SELECT * FROM Account where EmailAddress = ?`
-        const [rows] = await db.promise().query(query,[email]);
+        const query = `SELECT * FROM Account WHERE EmailAddress = $1`;
+        const { rows } = await db.query(query, [email]);
         return rows[0] || null;
     }catch(err){
         console.error("Error fetching user: ", err);
@@ -18,9 +13,9 @@ export async function getUserByEmail(email){
 }
 export async function getUserByAccountID(id) {
   try {
-    const query = `SELECT * FROM Account WHERE AccountID = ?`;
-    const [results] = await db.promise().query(query, [id]);
-    const account = results[0];
+    const query = `SELECT * FROM Account WHERE AccountID = $1`;
+    const { rows } = await db.query(query, [id]);
+    const account = rows[0];
     if (!account) return null;
     return account;
   } catch (error) {
@@ -31,8 +26,8 @@ export async function getUserByAccountID(id) {
 
 export async function updateSessionId(accountId, sessionId) {
     try {
-        const query = `UPDATE Account SET SessionId = ? WHERE AccountID = ?`;
-        await db.promise().query(query, [sessionId, accountId]);
+        const query = `UPDATE Account SET SessionId = $1 WHERE AccountID = $2`;
+        await db.query(query, [sessionId, accountId]);
     } catch (error) {
         console.error("Error updating session id: ", error);
         throw new Error("Error updating session id");
@@ -41,8 +36,8 @@ export async function updateSessionId(accountId, sessionId) {
 
 export async function clearSessionId(accountId) {
     try {
-        const query = `UPDATE Account SET SessionId = NULL WHERE AccountID = ?`;
-        await db.promise().query(query, [accountId]);
+        const query = `UPDATE Account SET SessionId = NULL WHERE AccountID = $1`;
+        await db.query(query, [accountId]);
     } catch (error) {
         console.error("Error clearing session id: ", error);
         throw new Error("Error clearing session id");
@@ -53,13 +48,13 @@ export async function clearSessionId(accountId) {
 
 export async function createAccount(EmailAddress,Password,user,verification){
     try{
-        const query = `INSERT INTO Account (EmailAddress,Password,User,VerificationStatus) Values(?, ?, ?, ?);`;
+        const query = `INSERT INTO Account (EmailAddress,Password,"User",VerificationStatus) Values($1, $2, $3, $4) RETURNING *`;
         console.log(EmailAddress,Password,user,verification)
-        const [result] = await db.promise().query(query, [EmailAddress.toLowerCase(), Password,user.toLowerCase(), verification]);
+        const { rows } = await db.query(query, [EmailAddress.toLowerCase(), Password, user.toLowerCase(), verification]);
         
-        if (result){
-            console.log("Account made",result);
-            return result;
+        if (rows[0]){
+            console.log("Account made", rows[0]);
+            return rows[0];
         }else{
             return null;
         }
@@ -72,9 +67,9 @@ export async function createAccount(EmailAddress,Password,user,verification){
 export async function getUserByUserName(userName){
     try{
         
-        const query = `SELECT * FROM Account WHERE User = ?`;
-        const [account] = await db.promise().query(query,[userName]);
-        return account[0] || null;
+        const query = `SELECT * FROM Account WHERE "User" = $1`;
+        const { rows } = await db.query(query, [userName]);
+        return rows[0] || null;
     }catch(error){
         console.error("Error fetching user: ", error);
         throw new Error("Error fetching user");
@@ -85,9 +80,9 @@ export async function getUserByUserName(userName){
 export async function getUserBySessionID(sessionId){
     try{
         
-        const query = `SELECT * FROM Account WHERE SessionId = ?`;
-        const [account] = await db.promise().query(query,[sessionId]);
-        return account[0] || null;
+        const query = `SELECT * FROM Account WHERE SessionId = $1`;
+        const { rows } = await db.query(query, [sessionId]);
+        return rows[0] || null;
     }catch(error){
         console.error("Error fetching user by Session ID: ", error);
         throw new Error("Error fetching user");

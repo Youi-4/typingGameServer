@@ -1,4 +1,4 @@
-import mysql from "mysql2";
+import pg from "pg";
 import dotenv from 'dotenv'
 import path from 'path';
 import { fileURLToPath } from 'url';
@@ -10,14 +10,15 @@ dotenv.config({
   path: path.resolve(__dirname, '../../.env')
 });
 
-const db = mysql.createConnection(process.env.DATABASE_URL);
+const { Pool } = pg;
 
-db.connect((err) => {
-  if (err) {
-    console.error("Error connecting to the database:", err);
-    return;
-  }
-  console.log("Connected to MySQL database");
+const db = new Pool({
+  connectionString: process.env.DATABASE_URL,
+  ssl: { rejectUnauthorized: false }
 });
+
+db.query("SELECT 1")
+  .then(() => console.log("Connected to PostgreSQL database"))
+  .catch((err) => console.error("Error connecting to the database:", err));
 
 export default db;
