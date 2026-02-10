@@ -50,11 +50,10 @@ async function userLogin(req, res) {
             );
 
             // Set token in cookie using the name expected by middleware
-            const isDev = process.env.NODE_ENV !== "production";
             res.cookie("token", token, {
                 httpOnly: true,
                 secure: true,
-                sameSite: isDev ? "lax" : "none",
+                sameSite: "none",
                 maxAge: 7 * 24 * 60 * 60 * 1000
             });
 

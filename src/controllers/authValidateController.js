@@ -12,8 +12,8 @@ export const authValidate = async (req, res) => {
         accountId: req.accountID,
         primaryRole: req.primaryRole,
         roles: req.roles,
-        firstName: user.FirstName,
-        lastName: user.LastName
+        firstName: user.firstname,
+        lastName: user.lastname
       },
     });
 }
