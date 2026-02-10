@@ -19,6 +19,11 @@ const db = new Pool({
 
 db.query("SELECT 1")
   .then(() => console.log("Connected to PostgreSQL database"))
-  .catch((err) => console.error("Error connecting to the database:", err));
+  .catch((err) => console.error("Error connecting to the database:", err.message));
+
+// Don't let pool errors crash the process
+db.on("error", (err) => {
+  console.error("Unexpected DB pool error:", err.message);
+});
 
 export default db;
