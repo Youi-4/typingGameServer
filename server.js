@@ -4,7 +4,7 @@ import dotenv from "dotenv";
 import cookieParser from "cookie-parser";
 import { createServer } from "http";
 import { Server } from "socket.io";
-
+import { paragraphs, paragraphWordMeans } from "./src/data/sentence.js";
 import cookie from "cookie";
 import jwt from "jsonwebtoken";
 import { getUserByAccountID } from "./src/models/userModel.js";
@@ -73,7 +73,7 @@ const io = new Server(httpServer, {
   }
 });
 
-const roomParagraphIndex = new Map();
+const roomParagraph = new Map();
 
 /* ------------------ Socket Auth (placeholder) ------------------ */
 
@@ -106,19 +106,18 @@ io.use(async (socket, next) => {
 io.on("connection", (socket) => {
   console.log("User connected:", socket.id);
 
-  socket.on("join-room", ({ roomId, paragraphCount }) => {
+  socket.on("join-room", ({ roomId }) => {
     socket.join(roomId);
-    if (!roomParagraphIndex.has(roomId)) {
-      const safeCount = Number.isInteger(paragraphCount) && paragraphCount > 0
-        ? paragraphCount
-        : 1;
-      const index = Math.floor(Math.random() * safeCount);
-      roomParagraphIndex.set(roomId, index);
+    if (!roomParagraph.has(roomId)) {
+      const randomindex = Math.floor(Math.random() * paragraphs.length);
+      const selectedSentence = paragraphs[randomindex];
+      roomParagraph.set(roomId,selectedSentence)
+    
     }
 
     socket.emit("room-state", {
       roomId,
-      paragraphIndex: roomParagraphIndex.get(roomId)
+      paragraph: roomParagraph.get(roomId)
     });
 
     console.log(`User ${socket.id} joined room ${roomId}`);
