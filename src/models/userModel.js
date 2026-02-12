@@ -2,7 +2,7 @@ import db from "../db/db.js";
 
 export async function getUserByEmail(email){
     try{
-        const query = `SELECT * FROM Account WHERE emailaddress = $1`;
+        const query = `SELECT * FROM account WHERE emailaddress = $1`;
         const { rows } = await db.query(query, [email]);
         return rows[0] || null;
     }catch(err){
@@ -11,9 +11,9 @@ export async function getUserByEmail(email){
     }
 
 }
-export async function getUserByAccountID(id) {
+export async function getUserByaccountID(id) {
   try {
-    const query = `SELECT * FROM Account WHERE accountid = $1`;
+    const query = `SELECT * FROM account WHERE accountid = $1`;
     const { rows } = await db.query(query, [id]);
     const account = rows[0];
     if (!account) return null;
@@ -26,7 +26,7 @@ export async function getUserByAccountID(id) {
 
 export async function updateSessionId(accountId, sessionId) {
     try {
-        const query = `UPDATE Account SET sessionid = $1 WHERE accountid = $2`;
+        const query = `UPDATE account SET sessionid = $1 WHERE accountid = $2`;
         await db.query(query, [sessionId, accountId]);
     } catch (error) {
         console.error("Error updating session id: ", error);
@@ -36,7 +36,7 @@ export async function updateSessionId(accountId, sessionId) {
 
 export async function clearSessionId(accountId) {
     try {
-        const query = `UPDATE Account SET sessionid = NULL WHERE accountid = $1`;
+        const query = `UPDATE account SET sessionid = NULL WHERE accountid = $1`;
         await db.query(query, [accountId]);
     } catch (error) {
         console.error("Error clearing session id: ", error);
@@ -46,14 +46,14 @@ export async function clearSessionId(accountId) {
 
 
 
-export async function createAccount(EmailAddress,Password,user,verification){
+export async function createaccount(EmailAddress,Password,user,verification){
     try{
-        const query = `INSERT INTO Account (emailaddress, password, "user", verificationstatus) VALUES ($1, $2, $3, $4) RETURNING *`;
+        const query = `INSERT INTO account (emailaddress, password, "user", verificationstatus) VALUES ($1, $2, $3, $4) RETURNING *`;
         console.log(EmailAddress,Password,user,verification)
         const { rows } = await db.query(query, [EmailAddress.toLowerCase(), Password, user.toLowerCase(), verification]);
         
         if (rows[0]){
-            console.log("Account made", rows[0]);
+            console.log("account made", rows[0]);
             return rows[0];
         }else{
             return null;
@@ -68,7 +68,7 @@ export async function createAccount(EmailAddress,Password,user,verification){
 export async function getUserByUserName(userName){
     try{
         
-        const query = `SELECT * FROM Account WHERE "user" = $1`;
+        const query = `SELECT * FROM account WHERE "user" = $1`;
         const { rows } = await db.query(query, [userName]);
         return rows[0] || null;
     }catch(error){
@@ -81,7 +81,7 @@ export async function getUserByUserName(userName){
 export async function getUserBySessionID(sessionId){
     try{
         
-        const query = `SELECT * FROM Account WHERE sessionid = $1`;
+        const query = `SELECT * FROM account WHERE sessionid = $1`;
         const { rows } = await db.query(query, [sessionId]);
         return rows[0] || null;
     }catch(error){

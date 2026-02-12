@@ -121,4 +121,21 @@ async function getUserBySession(req,res){
     res.status(500).json({ error: "Internal server error" });
   }
 } 
-export { userLogin,signupUser ,getUserBySession};
+
+async function getUserByID(req,res){
+  try {
+    const { account_id} = req.body;
+    // add validation here
+    const user = await getUserByaccountID(account_id);
+    
+    if (user){
+        res.status(201).json({ message: user });
+    }else{
+        res.status(409).json({ error: "User could not be found." });
+    }
+  } catch (error) {
+    console.log(error);
+    res.status(500).json({ error: "Internal server error" });
+  }
+} 
+export { userLogin,signupUser ,getUserBySession,getUserByID};
