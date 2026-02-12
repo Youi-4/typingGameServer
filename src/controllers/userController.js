@@ -41,7 +41,7 @@ async function userLogin(req, res) {
         if (isMatch) {
             const sessionId = crypto.randomBytes(32).toString("hex");
             await updateSessionId(user.accountid, sessionId);
-
+            console.log("Session ID:",sessionId);
             // Generate JWT token with the fields expected by auth middleware
             const token = jwt.sign(
                 { account_id: user.accountid, email: user.emailaddress, session_id: sessionId },
