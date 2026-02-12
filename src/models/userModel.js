@@ -11,7 +11,7 @@ export async function getUserByEmail(email){
     }
 
 }
-export async function getUserByaccountID(id) {
+export async function getUserByAccountID(id) {
   try {
     const query = `SELECT * FROM account WHERE accountid = $1`;
     const { rows } = await db.query(query, [id]);
@@ -46,7 +46,7 @@ export async function clearSessionId(accountId) {
 
 
 
-export async function createaccount(EmailAddress,Password,user,verification){
+export async function createAccount(EmailAddress,Password,user,verification){
     try{
         const query = `INSERT INTO account (emailaddress, password, "user", verificationstatus) VALUES ($1, $2, $3, $4) RETURNING *`;
         console.log(EmailAddress,Password,user,verification)
