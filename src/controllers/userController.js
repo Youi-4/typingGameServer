@@ -105,28 +105,38 @@ async function signupUser(req, res) {
 }
 
 
-async function getUserBySession(req,res){
+async function getUserBySession(req, res) {
   try {
-    const { sessionId} = req.body;
-    // add validation here
-    const user = await getUserBySessionID(sessionId);
-    
-    if (user){
-        res.status(201).json({ message: user });
-    }else{
-        res.status(409).json({ error: "User could not be found." });
+    const token = req.cookies?.token;
+    if (!token) {
+      return res.status(401).json({ error: "Missing auth token" });
     }
+
+    const decoded = jwt.verify(token, process.env.SECRET_KEY || "your-secret-key");
+    const sessionId = decoded?.session_id;
+
+    if (!sessionId) {
+      return res.status(401).json({ error: "Invalid auth token" });
+    }
+
+    const user = await getUserBySessionID(sessionId);
+
+    if (user) {
+      return res.status(200).json({ message: user });
+    }
+
+    return res.status(404).json({ error: "User could not be found." });
   } catch (error) {
     console.log(error);
-    res.status(500).json({ error: "Internal server error" });
+    return res.status(401).json({ error: "Unauthorized" });
   }
-} 
+}
 
 async function getUserByID(req,res){
   try {
     const { account_id} = req.body;
     // add validation here
-    const user = await getUserByaccountID(account_id);
+    const user = await getUserByAccountID(account_id);
     
     if (user){
         res.status(201).json({ message: user });

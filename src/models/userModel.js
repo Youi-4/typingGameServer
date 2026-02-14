@@ -81,7 +81,8 @@ export async function getUserByUserName(userName){
 export async function getUserBySessionID(sessionId){
     try{
         
-        const query = `SELECT * FROM account WHERE sessionid = $1`;
+        const query = `SELECT "user", emailaddress FROM account WHERE sessionid = $1`;
+        console.log("getting sessionID::::",sessionId);
         const { rows } = await db.query(query, [sessionId]);
         return rows[0] || null;
     }catch(error){
