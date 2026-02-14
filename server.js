@@ -79,12 +79,16 @@ const roomParagraph = new Map();
 
 io.use(async (socket, next) => {
   try {
-    const raw = socket.request.headers.cookie;
-    if (!raw) return next(new Error("No cookies"));
-
-    const cookies = cookie.parse(raw);
-    const token = cookies.token;
-    if (!token) return next(new Error("No token cookie"));
+    // Accept token from auth option (cross-origin) or fall back to cookie (same-origin)
+    let token = socket.handshake.auth?.token;
+    if (!token) {
+      const raw = socket.request.headers.cookie;
+      if (raw) {
+        const cookies = cookie.parse(raw);
+        token = cookies.token;
+      }
+    }
+    if (!token) return next(new Error("No token"));
 
     const decoded = jwt.verify(token, process.env.SECRET_KEY || "your-secret-key");
     const user = await getUserByAccountID(decoded.account_id);

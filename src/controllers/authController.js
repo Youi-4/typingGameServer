@@ -26,6 +26,24 @@ export const logout = async (req, res) => {
   res.json({ success: true });
 };
 
+export const getSocketToken = async (req, res) => {
+  try {
+    const user = await getUserByAccountID(req.accountID);
+    if (!user) return res.status(404).json({ error: "User not found" });
+
+    const socketToken = jwt.sign(
+      { account_id: user.accountid, session_id: user.sessionid },
+      process.env.SECRET_KEY || "your-secret-key",
+      { expiresIn: "30s" }
+    );
+
+    return res.status(200).json({ socketToken });
+  } catch (error) {
+    console.error("Socket token error:", error);
+    return res.status(500).json({ error: "Failed to generate socket token" });
+  }
+};
+
 export const refreshToken = async (req, res) => {
   try {
     const token = req.cookies.token;
