@@ -127,10 +127,21 @@ io.on("connection", (socket) => {
     console.log(`User ${socket.id} joined room ${roomId}`);
   });
 
-  socket.on("leave-room", (roomId) => {
-    socket.leave(roomId);
-    console.log(`User ${socket.id} left room ${roomId}`);
-  });
+socket.on("disconnecting", () => {
+  for (const roomId of socket.rooms) {
+    if (roomId !== socket.id) {
+      const room = io.sockets.adapter.rooms.get(roomId);
+      const roomSize = room ? room.size : 0;
+
+      if (roomSize === 1) {
+        roomParagraph.delete(roomId); // clean up last user
+        console.log(`Deleted data for room ${roomId}`);
+      }
+
+      console.log(`User ${socket.id} leaving room ${roomId}`);
+    }
+  }
+});
 
   socket.on("send-message", ({ roomId, message, typeObject }) => {
     // Broadcast to everyone in the room (including sender)
