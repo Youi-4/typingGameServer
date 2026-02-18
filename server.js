@@ -109,7 +109,7 @@ io.use(async (socket, next) => {
 
 io.on("connection", (socket) => {
   console.log("User connected:", socket.id);
-
+  console.log("IP:",socket.handshake.address)
   socket.on("join-room", ({ roomId }) => {
     socket.join(roomId);
     if (!roomParagraph.has(roomId)) {
