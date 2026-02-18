@@ -108,8 +108,10 @@ io.use(async (socket, next) => {
 /* ------------------ Socket Events ------------------ */
 
 io.on("connection", (socket) => {
-  console.log("User connected:", socket.id);
-  console.log("IP:",socket.handshake.address)
+  console.log("\nUser connected:", socket.id);
+    console.log("handshake.address:", socket.handshake.address);
+  console.log("x-forwarded-for:", socket.handshake.headers["x-forwarded-for"]);
+  console.log("remoteAddress:", socket.request.connection.remoteAddress,"\n");
   socket.on("join-room", ({ roomId }) => {
     socket.join(roomId);
     if (!roomParagraph.has(roomId)) {
