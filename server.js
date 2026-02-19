@@ -77,9 +77,8 @@ const roomParagraph = new Map();
 
 /* ------------------ Socket Auth (placeholder) ------------------ */
 
-io.use(async (socket, next) => {
+const authMiddleware = async (socket, next) => {
   try {
-    // Accept token from auth option (cross-origin) or fall back to cookie (same-origin)
     let token = socket.handshake.auth?.token;
     if (!token) {
       const raw = socket.request.headers.cookie;
@@ -94,7 +93,6 @@ io.use(async (socket, next) => {
     const user = await getUserByAccountID(decoded.account_id);
     if (!user) return next(new Error("User not found"));
 
-    // Attach user info to the socket for later use
     socket.username = user.user;
     socket.accountId = user.accountid;
     console.log(`Socket authenticated: ${socket.username}`);
@@ -103,22 +101,93 @@ io.use(async (socket, next) => {
     console.error("Socket auth error:", err.message);
     next(new Error("Unauthorized"));
   }
-});
+};
 
 /* ------------------ Socket Events ------------------ */
-
-io.on("connection", (socket) => {
+let queue = [];
+const public_game = io.of("/public_game");
+public_game.use(authMiddleware);
+public_game.on("connection", (socket) => {
   console.log("\nUser connected:", socket.id);
-    console.log("handshake.address:", socket.handshake.address);
+  console.log("handshake.address:", socket.handshake.address);
   console.log("x-forwarded-for:", socket.handshake.headers["x-forwarded-for"]);
-  console.log("remoteAddress:", socket.request.connection.remoteAddress,"\n");
+  console.log("remoteAddress:", socket.request.connection.remoteAddress, "\n");
+  socket.on("join-room", ({ roomId }) => {
+
+    queue.push(socket);
+
+    if (queue.length >= 2) {
+      const player1 = queue.shift();
+      const player2 = queue.shift();
+
+      const roomId = `room-${Date.now()}`;
+
+      player1.join(roomId);
+      player2.join(roomId);
+
+      if (!roomParagraph.has(roomId)) {
+        const randomindex = Math.floor(Math.random() * paragraphs.length);
+        const selectedSentence = paragraphs[randomindex];
+        roomParagraph.set(roomId, selectedSentence)
+
+      }
+
+      socket.emit("room-state", {
+        roomId,
+        paragraph: roomParagraph.get(roomId)
+      });
+    }
+
+
+
+    console.log(`User ${socket.id} joined room ${roomId}`);
+  });
+
+  socket.on("disconnecting", () => {
+    for (const roomId of socket.rooms) {
+      if (roomId !== socket.id) {
+        const room = io.sockets.adapter.rooms.get(roomId);
+        const roomSize = room ? room.size : 0;
+
+        if (roomSize === 1) {
+          roomParagraph.delete(roomId); // clean up last user
+          console.log(`Deleted data for room ${roomId}`);
+        }
+
+        console.log(`User ${socket.id} leaving room ${roomId}`);
+      }
+    }
+  });
+
+  socket.on("send-message", ({ roomId, message, typeObject }) => {
+    // Broadcast to everyone in the room (including sender)
+    io.to(roomId).emit("receive-message", {
+      senderId: socket.id,
+      senderName: socket.username || "Unknown",
+      message,
+      typeObject
+    });
+  });
+
+  socket.on("disconnect", () => {
+    console.log("User disconnected:", socket.id);
+  });
+});
+
+const private_game = io.of("/private_game");
+private_game.use(authMiddleware);
+private_game.on("connection", (socket) => {
+  console.log("\nUser connected:$$$$$$$$$$$$$$$$", socket.id);
+  // console.log("handshake.address:", socket.handshake.address);
+  // console.log("x-forwarded-for:", socket.handshake.headers["x-forwarded-for"]);
+  // console.log("remoteAddress:", socket.request.connection.remoteAddress,"\n");
   socket.on("join-room", ({ roomId }) => {
     socket.join(roomId);
     if (!roomParagraph.has(roomId)) {
       const randomindex = Math.floor(Math.random() * paragraphs.length);
       const selectedSentence = paragraphs[randomindex];
-      roomParagraph.set(roomId,selectedSentence)
-    
+      roomParagraph.set(roomId, selectedSentence)
+
     }
 
     socket.emit("room-state", {
@@ -129,21 +198,21 @@ io.on("connection", (socket) => {
     console.log(`User ${socket.id} joined room ${roomId}`);
   });
 
-socket.on("disconnecting", () => {
-  for (const roomId of socket.rooms) {
-    if (roomId !== socket.id) {
-      const room = io.sockets.adapter.rooms.get(roomId);
-      const roomSize = room ? room.size : 0;
+  socket.on("disconnecting", () => {
+    for (const roomId of socket.rooms) {
+      if (roomId !== socket.id) {
+        const room = io.sockets.adapter.rooms.get(roomId);
+        const roomSize = room ? room.size : 0;
 
-      if (roomSize === 1) {
-        roomParagraph.delete(roomId); // clean up last user
-        console.log(`Deleted data for room ${roomId}`);
+        if (roomSize === 1) {
+          roomParagraph.delete(roomId); // clean up last user
+          console.log(`Deleted data for room ${roomId}`);
+        }
+
+        console.log(`User ${socket.id} leaving room ${roomId}`);
       }
-
-      console.log(`User ${socket.id} leaving room ${roomId}`);
     }
-  }
-});
+  });
 
   socket.on("send-message", ({ roomId, message, typeObject }) => {
     // Broadcast to everyone in the room (including sender)
