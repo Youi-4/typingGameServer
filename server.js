@@ -192,6 +192,8 @@ public_game.on("connection", (socket) => {
         if (roomSize === 1) {
           roomParagraph.delete(roomId); // clean up last user
           console.log(`Deleted data for room ${roomId}`);
+        } else {
+          public_game.to(roomId).emit("user-left", { senderId: socket.id });
         }
 
         console.log(`User ${socket.id} leaving room ${roomId}`);
@@ -262,6 +264,8 @@ private_game.on("connection", (socket) => {
         if (roomSize === 1) {
           roomParagraph.delete(roomId); // clean up last user
           console.log(`Deleted data for room ${roomId}`);
+        } else {
+          private_game.to(roomId).emit("user-left", { senderId: socket.id });
         }
 
         console.log(`User ${socket.id} leaving room ${roomId}`);
