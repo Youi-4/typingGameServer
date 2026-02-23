@@ -14,7 +14,7 @@ import authRoutes from "./src/routes/authRoutes.js";
 dotenv.config();
 
 const app = express();
-
+let sharedRoomId = Math.random().toString(36).slice(2, 8).toLowerCase();
 console.log("CLIENT_URL =", process.env.CLIENT_URL);
 
 /* ------------------ Middleware ------------------ */
@@ -47,6 +47,10 @@ app.use(cookieParser());
 
 /* ------------------ Routes ------------------ */
 
+app.get("/api/create-room", (_req, res) => {
+  res.json({ sharedRoomId });
+});
+
 app.use("/api/user", userRoutes);
 app.use("/api/auth", authRoutes);
 
@@ -74,7 +78,7 @@ const io = new Server(httpServer, {
 });
 
 const roomParagraph = new Map();
-
+// const publicRooms = new Map();
 /* ------------------ Socket Auth (placeholder) ------------------ */
 
 const authMiddleware = async (socket, next) => {
@@ -105,6 +109,7 @@ const authMiddleware = async (socket, next) => {
 
 /* ------------------ Socket Events ------------------ */
 let queue = [];
+
 const public_game = io.of("/public_game");
 public_game.use(authMiddleware);
 public_game.on("connection", (socket) => {
@@ -112,35 +117,70 @@ public_game.on("connection", (socket) => {
   console.log("handshake.address:", socket.handshake.address);
   console.log("x-forwarded-for:", socket.handshake.headers["x-forwarded-for"]);
   console.log("remoteAddress:", socket.request.connection.remoteAddress, "\n");
-  socket.on("join-room", ({ roomId }) => {
 
-    queue.push(socket);
+  socket.on("join-room", ({ }) => {
 
+
+    // console.log(roomId,"$$$$$$$$$$$");
+    // if (roomId === undefined){
+    //   console.log("HEHHHHHHHHHHHHHHHHHHHHHHHHH");
+    // } 
+
+    // queue.push({socket});
+    // if (queue.length >= 2) {
+    //   const player1 = queue.shift();
+    //   const player2 = queue.shift();
+    //   const sharedRoomId = Math.random().toString(36).slice(2, 8).toLowerCase();
+
+    //   player1.socket.join(sharedRoomId);
+    //   player2.socket.join(sharedRoomId);
+
+    //   if (!roomParagraph.has(sharedRoomId)) {
+    //     const randomindex = Math.floor(Math.random() * paragraphs.length);
+    //     const selectedSentence = paragraphs[randomindex];
+    //     roomParagraph.set(sharedRoomId, selectedSentence)
+
+    //   }
+    //   player1.socket.emit("room-state", {
+    //     roomId:sharedRoomId,
+    //     paragraph: roomParagraph.get(sharedRoomId)
+    //   });
+    //   player2.socket.emit("room-state", {
+    //     roomId:sharedRoomId,
+    //     paragraph: roomParagraph.get(sharedRoomId)
+    //   });
+    // }
+
+
+
+
+
+    // console.log(roomId,"$$$$$$$$$$$");
+    //   if (roomId === undefined){
+    //     console.log("HEHHHHHHHHHHHHHHHHHHHHHHHHH");
+    //   } 
+
+    queue.push({ socket });
+    // publicRooms.set(socket.id,sharedRoomId);
+    socket.join(sharedRoomId);
+    socket.currentRoomId = sharedRoomId;
+    if (!roomParagraph.has(sharedRoomId)) {
+      const randomindex = Math.floor(Math.random() * paragraphs.length);
+      const selectedSentence = paragraphs[randomindex];
+      roomParagraph.set(sharedRoomId, selectedSentence)
+
+    }
+    socket.emit("room-state", {
+      roomId: sharedRoomId,
+      paragraph: roomParagraph.get(sharedRoomId)
+    });
+    console.log(`User ${socket.id} joined room ${sharedRoomId}`);
     if (queue.length >= 2) {
-      const player1 = queue.shift();
-      const player2 = queue.shift();
-
-      const roomId = `room-${Date.now()}`;
-
-      player1.join(roomId);
-      player2.join(roomId);
-
-      if (!roomParagraph.has(roomId)) {
-        const randomindex = Math.floor(Math.random() * paragraphs.length);
-        const selectedSentence = paragraphs[randomindex];
-        roomParagraph.set(roomId, selectedSentence)
-
-      }
-
-      socket.emit("room-state", {
-        roomId,
-        paragraph: roomParagraph.get(roomId)
-      });
+      console.log("NEW ROOM CREATED")
+      queue = [];
+      sharedRoomId = Math.random().toString(36).slice(2, 8).toLowerCase();
     }
 
-
-
-    console.log(`User ${socket.id} joined room ${roomId}`);
   });
 
   socket.on("disconnecting", () => {
@@ -159,23 +199,38 @@ public_game.on("connection", (socket) => {
     }
   });
 
-  socket.on("send-message", ({ roomId, message, typeObject }) => {
-    // Broadcast to everyone in the room (including sender)
-    io.to(roomId).emit("receive-message", {
+  // socket.on("send-message", ({ roomId:sharedRoomId, message, typeObject }) => {
+  //   // Broadcast to everyone in the room (including sender)
+  //   public_game.to(sharedRoomId).emit("receive-message", {
+  //     senderId: socket.id,
+  //     senderName: socket.username || "Unknown",
+  //     message,
+  //     typeObject
+  //   });
+  // });
+  socket.on("send-message", ({ message, typeObject }) => {
+    const roomId = socket.currentRoomId;
+    if (!roomId) return;
+
+    public_game.to(roomId).emit("receive-message", {
       senderId: socket.id,
       senderName: socket.username || "Unknown",
       message,
       typeObject
     });
   });
-
   socket.on("disconnect", () => {
-    console.log("User disconnected:", socket.id);
+    queue = queue.filter(item => item.socket.id !== socket.id);
+    console.log("User disconnected and removed from queue:", socket.id);
   });
 });
 
+
+/* Private Game */
+
 const private_game = io.of("/private_game");
 private_game.use(authMiddleware);
+
 private_game.on("connection", (socket) => {
   console.log("\nUser connected:$$$$$$$$$$$$$$$$", socket.id);
   // console.log("handshake.address:", socket.handshake.address);
@@ -216,7 +271,7 @@ private_game.on("connection", (socket) => {
 
   socket.on("send-message", ({ roomId, message, typeObject }) => {
     // Broadcast to everyone in the room (including sender)
-    io.to(roomId).emit("receive-message", {
+    private_game.to(roomId).emit("receive-message", {
       senderId: socket.id,
       senderName: socket.username || "Unknown",
       message,
