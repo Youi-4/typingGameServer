@@ -161,7 +161,11 @@ public_game.on("connection", (socket) => {
     //   } 
 
     queue.push({ socket });
-    // publicRooms.set(socket.id,sharedRoomId);
+    // if (publicRooms.has(sharedRoomId)){
+    //   publicRooms.set(sharedRoomId,publicRooms.get(sharedRoomId)+1);
+    // }else{
+    //   publicRooms.set(sharedRoomId,socket.id);
+    // }
     socket.join(sharedRoomId);
     socket.currentRoomId = sharedRoomId;
     if (!roomParagraph.has(sharedRoomId)) {
@@ -178,6 +182,9 @@ public_game.on("connection", (socket) => {
     if (queue.length >= 2) {
       console.log("NEW ROOM CREATED")
       queue = [];
+          socket.emit("room-status", {
+            status: "filled"
+    });
       sharedRoomId = Math.random().toString(36).slice(2, 8).toLowerCase();
     }
 
@@ -223,6 +230,7 @@ public_game.on("connection", (socket) => {
   });
   socket.on("disconnect", () => {
     queue = queue.filter(item => item.socket.id !== socket.id);
+    // publicRooms = publicRooms.delete(socket.id);
     console.log("User disconnected and removed from queue:", socket.id);
   });
 });
