@@ -182,9 +182,7 @@ public_game.on("connection", (socket) => {
     if (queue.length >= 2) {
       console.log("NEW ROOM CREATED")
       queue = [];
-          socket.emit("room-status", {
-            status: "filled"
-    });
+      public_game.to(sharedRoomId).emit("room-status", {  status: "filled" });
       sharedRoomId = Math.random().toString(36).slice(2, 8).toLowerCase();
     }
 
