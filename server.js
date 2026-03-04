@@ -116,7 +116,6 @@ public_game.on("connection", (socket) => {
   console.log("handshake.address:", socket.handshake.address);
   console.log("x-forwarded-for:", socket.handshake.headers["x-forwarded-for"]);
   console.log("remoteAddress:", socket.request.connection.remoteAddress, "\n");
-
   socket.on("join-room", ({ }) => {
 
 
@@ -165,11 +164,9 @@ public_game.on("connection", (socket) => {
       }
     }
   });
-
   socket.on("send-message", ({ message, typeObject }) => {
     const roomId = socket.currentRoomId;
     if (!roomId) return;
-
     public_game.to(roomId).emit("receive-message", {
       senderId: socket.id,
       senderName: socket.username || "Unknown",
