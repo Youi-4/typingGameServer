@@ -109,7 +109,7 @@ const authMiddleware = async (socket, next) => {
 /* ------------------ Socket Events ------------------ */
 let publicQueue = [];
 let publicSharedRoomId = Math.random().toString(36).slice(2, 8).toLowerCase();
-let characterNums = [0,1,2];
+let characterNumsPublic = [0,1,2,3,4];
 const public_game = io.of("/public_game");
 public_game.use(authMiddleware);
 public_game.on("connection", (socket) => {
@@ -122,10 +122,10 @@ public_game.on("connection", (socket) => {
 
     // if (publicQueue.some(item => item.socket.id === socket.id)) return;
     publicQueue.push({ socket });
-    let index = characterNums[Math.floor(Math.random()*characterNums.length)];
+    let index = characterNumsPublic[Math.floor(Math.random()*characterNumsPublic.length)];
     socket.characterNumber = index
     console.log("socket.characterNumber:",socket.characterNumber)
-    characterNums.splice(index, 1);
+    characterNumsPublic.splice(index, 1);
     console.log("socket.characterNumber:",socket.characterNumber);
     // if (publicRooms.has(publicSharedRoomId)){
     //   publicRooms.set(publicSharedRoomId,publicRooms.get(publicSharedRoomId)+1);
@@ -149,7 +149,7 @@ public_game.on("connection", (socket) => {
     if (publicQueue.length >= 2) {
       console.log("NEW ROOM CREATED")
       publicQueue = [];
-      characterNums = [0,1,2,3,4];
+      characterNumsPublic = [0,1,2,3,4];
       public_game.to(publicSharedRoomId).emit("room-status", { status: "filled" });
       publicSharedRoomId = Math.random().toString(36).slice(2, 8).toLowerCase();
     }
