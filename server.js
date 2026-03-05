@@ -119,6 +119,7 @@ const authMiddleware = async (socket, next) => {
 let publicQueue = [];
 let publicSharedRoomId = Math.random().toString(36).slice(2, 8).toLowerCase();
 let characterNumsPublic = [0,1,2,3,4];
+const publicRoomLastState = new Map(); // roomId -> Map(socketId -> lastMessage)
 const public_game = io.of("/public_game");
 public_game.use(authMiddleware);
 public_game.on("connection", (socket) => {
@@ -152,6 +153,11 @@ public_game.on("connection", (socket) => {
       paragraph: publicRoomParagraph.get(publicSharedRoomId),
       characterNumber: socket.characterNumber
     });
+    if (publicRoomLastState.has(publicSharedRoomId)) {
+      for (const [, state] of publicRoomLastState.get(publicSharedRoomId)) {
+        socket.emit("receive-message", state);
+      }
+    }
     console.log(`User ${socket.id} joined room ${publicSharedRoomId}`);
     if (publicQueue.length >= 2) {
       console.log("NEW ROOM CREATED")
@@ -170,9 +176,11 @@ public_game.on("connection", (socket) => {
         const roomSize = room ? room.size : 0;
 
         if (roomSize === 1) {
-          publicRoomParagraph.delete(roomId); // clean up last user
+          publicRoomParagraph.delete(roomId);
+          publicRoomLastState.delete(roomId);
           console.log(`Deleted data for room ${roomId}`);
         } else {
+          publicRoomLastState.get(roomId)?.delete(socket.id);
           public_game.to(roomId).emit("user-left", { senderId: socket.id });
         }
 
@@ -183,13 +191,16 @@ public_game.on("connection", (socket) => {
   socket.on("send-message", ({ message, typeObject }) => {
     const roomId = socket.currentRoomId;
     if (!roomId) return;
-    public_game.to(roomId).emit("receive-message", {
+    const msg = {
       senderId: socket.id,
       senderName: socket.username || "Unknown",
-      characterNumber:socket.characterNumber,
+      characterNumber: socket.characterNumber,
       message,
       typeObject
-    });
+    };
+    if (!publicRoomLastState.has(roomId)) publicRoomLastState.set(roomId, new Map());
+    publicRoomLastState.get(roomId).set(socket.id, msg);
+    public_game.to(roomId).emit("receive-message", msg);
   });
   socket.on("disconnect", () => {
     publicQueue = publicQueue.filter(item => item.socket.id !== socket.id);
@@ -258,6 +269,7 @@ public_game.on("connection", (socket) => {
 
 /* Private Game */
 const privateRoomParagraph = new Map();
+const privateRoomLastState = new Map(); // roomId -> Map(socketId -> lastMessage)
 let privateRoomQueue =  new Map();
 let characterNumsPrivate = [0,1,2,3,4];
 const private_game = io.of("/private_game");
@@ -297,6 +309,11 @@ private_game.on("connection", (socket) => {
       paragraph: privateRoomParagraph.get(roomId),
       characterNumber: socket.characterNumber
     });
+    if (privateRoomLastState.has(roomId)) {
+      for (const [, state] of privateRoomLastState.get(roomId)) {
+        socket.emit("receive-message", state);
+      }
+    }
     console.log(`User ${socket.id} joined room ${roomId} with privateRoomQueue.get(roomId).length being:`,privateRoomQueue.get(roomId).length );
     if (privateRoomQueue.get(roomId).length >= 2) {
       console.log("NEW ROOM CREATED")
@@ -313,10 +330,12 @@ private_game.on("connection", (socket) => {
         const roomSize = room ? room.size : 0;
 
         if (roomSize === 1) {
-          privateRoomParagraph.delete(roomId); // clean up last user
+          privateRoomParagraph.delete(roomId);
+          privateRoomLastState.delete(roomId);
           privateRoomQueue.delete(roomId);
           console.log(`Deleted data for room ${roomId}`);
         } else {
+          privateRoomLastState.get(roomId)?.delete(socket.id);
           private_game.to(roomId).emit("user-left", { senderId: socket.id });
         }
 
@@ -328,14 +347,16 @@ private_game.on("connection", (socket) => {
   socket.on("send-message", ({ message, typeObject }) => {
     const roomId = socket.currentRoomId;
     if (!roomId) return;
-
-    private_game.to(roomId).emit("receive-message", {
+    const msg = {
       senderId: socket.id,
       senderName: socket.username || "Unknown",
-      characterNumber:socket.characterNumber,
+      characterNumber: socket.characterNumber,
       message,
       typeObject
-    });
+    };
+    if (!privateRoomLastState.has(roomId)) privateRoomLastState.set(roomId, new Map());
+    privateRoomLastState.get(roomId).set(socket.id, msg);
+    private_game.to(roomId).emit("receive-message", msg);
   });
   socket.on("disconnect", () => {
     console.log("User disconnected and removed from queue:", socket.id);
