@@ -109,6 +109,7 @@ const authMiddleware = async (socket, next) => {
 /* ------------------ Socket Events ------------------ */
 let publicQueue = [];
 let publicSharedRoomId = Math.random().toString(36).slice(2, 8).toLowerCase();
+let characterNums = [0,1,2];
 const public_game = io.of("/public_game");
 public_game.use(authMiddleware);
 public_game.on("connection", (socket) => {
@@ -119,7 +120,13 @@ public_game.on("connection", (socket) => {
   socket.on("join-room", ({ }) => {
 
 
+    // if (publicQueue.some(item => item.socket.id === socket.id)) return;
     publicQueue.push({ socket });
+    let index = characterNums[Math.floor(Math.random()*characterNums.length)];
+    socket.characterNumber = index
+    console.log("socket.characterNumber:",socket.characterNumber)
+    characterNums.splice(index, 1);
+    console.log("socket.characterNumber:",socket.characterNumber);
     // if (publicRooms.has(publicSharedRoomId)){
     //   publicRooms.set(publicSharedRoomId,publicRooms.get(publicSharedRoomId)+1);
     // }else{
@@ -135,12 +142,14 @@ public_game.on("connection", (socket) => {
     }
     socket.emit("room-state", {
       roomId: publicSharedRoomId,
-      paragraph: publicRoomParagraph.get(publicSharedRoomId)
+      paragraph: publicRoomParagraph.get(publicSharedRoomId),
+      characterNumber:publicQueue.length
     });
     console.log(`User ${socket.id} joined room ${publicSharedRoomId}`);
     if (publicQueue.length >= 2) {
       console.log("NEW ROOM CREATED")
       publicQueue = [];
+      characterNums = [0,1,2,3,4];
       public_game.to(publicSharedRoomId).emit("room-status", { status: "filled" });
       publicSharedRoomId = Math.random().toString(36).slice(2, 8).toLowerCase();
     }
@@ -170,6 +179,7 @@ public_game.on("connection", (socket) => {
     public_game.to(roomId).emit("receive-message", {
       senderId: socket.id,
       senderName: socket.username || "Unknown",
+      characterNumber:socket.characterNumber,
       message,
       typeObject
     });
