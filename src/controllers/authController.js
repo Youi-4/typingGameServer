@@ -44,6 +44,16 @@ export const getSocketToken = async (req, res) => {
   }
 };
 
+export const getGuestToken = (req, res) => {
+  const guestId = `guest_${Math.random().toString(36).slice(2, 400)}`;
+  const socketToken = jwt.sign(
+    { account_id: guestId, is_guest: true },
+    process.env.SECRET_KEY || "your-secret-key",
+    { expiresIn: "2h" }
+  );
+  return res.status(200).json({ socketToken, guestId });
+};
+
 export const refreshToken = async (req, res) => {
   try {
     const token = req.cookies.token;
