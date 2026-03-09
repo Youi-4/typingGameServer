@@ -300,8 +300,8 @@ private_game.on("connection", (socket) => {
     }else{
       privateRoomQueue.get(roomId).push(socket);
     }
-    let index = characterNumsPrivate.get(roomId)[Math.floor(Math.random()*characterNumsPrivate.get(roomId).length)];
-    socket.characterNumber = index
+    let index = Math.floor(Math.random()*characterNumsPrivate.get(roomId).length);
+    socket.characterNumber = characterNumsPrivate.get(roomId)[index]
     characterNumsPrivate.get(roomId).splice(index, 1);
     if (!privateRoomParagraph.has(roomId)) {
       const randomindex = Math.floor(Math.random() * paragraphs.length);
