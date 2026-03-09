@@ -120,6 +120,7 @@ let publicQueue = [];
 let publicSharedRoomId = Math.random().toString(36).slice(2, 8).toLowerCase();
 let characterNumsPublic = [0,1,2,3,4];
 const publicRoomLastState = new Map(); // roomId -> Map(socketId -> lastMessage)
+const publicRoomPendingBatch = new Map(); // roomId -> Map(socketId -> latestMsg)
 const public_game = io.of("/public_game");
 public_game.use(authMiddleware);
 public_game.on("connection", (socket) => {
@@ -172,6 +173,7 @@ public_game.on("connection", (socket) => {
         if (roomSize === 1) {
           publicRoomParagraph.delete(roomId);
           publicRoomLastState.delete(roomId);
+          publicRoomPendingBatch.delete(roomId);
           console.log(`Deleted data for room ${roomId}`);
         } else {
           publicRoomLastState.get(roomId)?.delete(socket.id);
@@ -194,8 +196,8 @@ public_game.on("connection", (socket) => {
     };
     if (!publicRoomLastState.has(roomId)) publicRoomLastState.set(roomId, new Map());
     publicRoomLastState.get(roomId).set(socket.id, msg);
-    socket.to(roomId).emit("receive-message", msg);
-    socket.emit("receive-message", msg);
+    if (!publicRoomPendingBatch.has(roomId)) publicRoomPendingBatch.set(roomId, new Map());
+    publicRoomPendingBatch.get(roomId).set(socket.id, msg);
   });
   socket.on("disconnect", () => {
     publicQueue = publicQueue.filter(item => item.socket.id !== socket.id);
@@ -207,7 +209,8 @@ public_game.on("connection", (socket) => {
 
 /* Private Game */
 const privateRoomParagraph = new Map();
-const privateRoomLastState = new Map(); // roomId -> Map(socketId -> lastMessage)
+const privateRoomLastState = new Map(); 
+const privateRoomPendingBatch = new Map();
 const privateRoomQueue =  new Map();
 const characterNumsPrivate = new Map();
 const privateRoomSize =  new Map();
@@ -221,7 +224,7 @@ private_game.on("connection", (socket) => {
   // console.log("remoteAddress:", socket.request.connection.remoteAddress,"\n");
   socket.on("join-room", ({ roomId, roomSize}) => {
 
-    // console.log((roomId)?`THERE IS ROOM ID:${roomId}`:"THERE IS NO ROOM ID");
+    // console.log((roomId)?`THERE IS ROOM ID:${roomId}`:"THERE IS NO ROOM ID"); 
     // console.log("roomSize:",roomSize);
     socket.join(roomId);
     socket.currentRoomId = roomId;
@@ -268,6 +271,7 @@ private_game.on("connection", (socket) => {
         if (roomSize === 1) {
           privateRoomParagraph.delete(roomId);
           privateRoomLastState.delete(roomId);
+          privateRoomPendingBatch.delete(roomId);
           characterNumsPrivate.delete(roomId);
           privateRoomQueue.delete(roomId);
           privateRoomSize.delete(roomId);
@@ -294,13 +298,33 @@ private_game.on("connection", (socket) => {
     };
     if (!privateRoomLastState.has(roomId)) privateRoomLastState.set(roomId, new Map());
     privateRoomLastState.get(roomId).set(socket.id, msg);
-    socket.to(roomId).emit("receive-message", msg);
-    socket.emit("receive-message", msg);
+    if (!privateRoomPendingBatch.has(roomId)) privateRoomPendingBatch.set(roomId, new Map());
+    privateRoomPendingBatch.get(roomId).set(socket.id, msg);
   });
   socket.on("disconnect", () => {
     console.log("User disconnected and removed from queue:", socket.id);
   });
 });
+
+/* ------------------ Batch Flush Intervals ------------------ */
+
+const BATCH_INTERVAL_MS = 50;
+
+setInterval(() => {
+  for (const [roomId, pendingMap] of publicRoomPendingBatch) {
+    if (pendingMap.size === 0) continue;
+    public_game.to(roomId).emit("batch-update", Array.from(pendingMap.values()));
+    pendingMap.clear();
+  }
+}, BATCH_INTERVAL_MS);
+
+setInterval(() => {
+  for (const [roomId, pendingMap] of privateRoomPendingBatch) {
+    if (pendingMap.size === 0) continue;
+    private_game.to(roomId).emit("batch-update", Array.from(pendingMap.values()));
+    pendingMap.clear();
+  }
+}, BATCH_INTERVAL_MS);
 
 /* ------------------ Start Server ------------------ */
 
