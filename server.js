@@ -270,8 +270,8 @@ public_game.on("connection", (socket) => {
 /* Private Game */
 const privateRoomParagraph = new Map();
 const privateRoomLastState = new Map(); // roomId -> Map(socketId -> lastMessage)
-let privateRoomQueue =  new Map();
-let characterNumsPrivate = [0,1,2,3,4];
+const privateRoomQueue =  new Map();
+const characterNumsPrivate = new Map();
 const private_game = io.of("/private_game");
 private_game.use(authMiddleware);
 let privateSharedRoomId = Math.random().toString(36).slice(2, 8).toLowerCase();
@@ -283,9 +283,7 @@ private_game.on("connection", (socket) => {
   socket.on("join-room", ({ roomId}) => {
 
     console.log((roomId)?`THERE IS ROOM ID:${roomId}`:"THERE IS NO ROOM ID");
-    let index = characterNumsPrivate[Math.floor(Math.random()*characterNumsPrivate.length)];
-    socket.characterNumber = index
-    characterNumsPrivate.splice(index, 1);
+
     // if (publicRooms.has(privateSharedRoomId)){
     //   publicRooms.set(privateSharedRoomId,publicRooms.get(privateSharedRoomId)+1);
     // }else{
@@ -295,14 +293,18 @@ private_game.on("connection", (socket) => {
     socket.currentRoomId = roomId;
     
     if (!privateRoomQueue.has(roomId)){
-      privateRoomQueue.set(roomId,[socket])
+      privateRoomQueue.set(roomId,[socket]);
+      characterNumsPrivate.set(roomId,[0,1,2,3,4]);
     }else{
       privateRoomQueue.get(roomId).push(socket)
     }
+    let index = characterNumsPrivate.get(roomId)[Math.floor(Math.random()*characterNumsPrivate.get(roomId).length)];
+    socket.characterNumber = index
+    characterNumsPrivate.get(roomId).splice(index, 1);
     if (!privateRoomParagraph.has(roomId)) {
       const randomindex = Math.floor(Math.random() * paragraphs.length);
       const selectedSentence = paragraphs[randomindex];
-      privateRoomParagraph.set(roomId, selectedSentence)
+      privateRoomParagraph.set(roomId, selectedSentence);
     }
     socket.emit("room-state", {
       roomId: roomId,
@@ -317,7 +319,6 @@ private_game.on("connection", (socket) => {
     console.log(`User ${socket.id} joined room ${roomId} with privateRoomQueue.get(roomId).length being:`,privateRoomQueue.get(roomId).length );
     if (privateRoomQueue.get(roomId).length >= 2) {
       console.log("NEW ROOM CREATED")
-      characterNumsPrivate = [0,1,2,3,4];
       private_game.to(roomId).emit("room-status", { status: "filled" });
     }
 
@@ -332,6 +333,7 @@ private_game.on("connection", (socket) => {
         if (roomSize === 1) {
           privateRoomParagraph.delete(roomId);
           privateRoomLastState.delete(roomId);
+          characterNumsPrivate.delete(roomId);
           privateRoomQueue.delete(roomId);
           console.log(`Deleted data for room ${roomId}`);
         } else {
