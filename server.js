@@ -76,8 +76,6 @@ const io = new Server(httpServer, {
   }
 });
 
-const publicRoomParagraph = new Map();
-// const publicRooms = new Map();
 /* ------------------ Socket Auth (placeholder) ------------------ */
 
 const authMiddleware = async (socket, next) => {
@@ -116,11 +114,12 @@ const authMiddleware = async (socket, next) => {
 };
 
 /* ------------------ Socket Events ------------------ */
+
+// publicRooms: Map<roomId, { paragraph, lastState, pendingBatch }>
+const publicRooms = new Map();
 let publicQueue = [];
 let publicSharedRoomId = Math.random().toString(36).slice(2, 8).toLowerCase();
-let characterNumsPublic = [0,1,2,3,4];
-const publicRoomLastState = new Map(); // roomId -> Map(socketId -> lastMessage)
-const publicRoomPendingBatch = new Map(); // roomId -> Map(socketId -> latestMsg)
+let characterNumsPublic = [0, 1, 2, 3, 4];
 const public_game = io.of("/public_game");
 public_game.use(authMiddleware);
 public_game.on("connection", (socket) => {
@@ -129,61 +128,56 @@ public_game.on("connection", (socket) => {
   console.log("x-forwarded-for:", socket.handshake.headers["x-forwarded-for"]);
   console.log("remoteAddress:", socket.request.connection.remoteAddress, "\n");
   socket.on("join-room", ({ }) => {
-
-
     publicQueue.push({ socket });
-    let index = Math.floor(Math.random()*characterNumsPublic.length);
+    let index = Math.floor(Math.random() * characterNumsPublic.length);
     socket.characterNumber = characterNumsPublic[index];
     characterNumsPublic.splice(index, 1);
     socket.join(publicSharedRoomId);
     socket.currentRoomId = publicSharedRoomId;
-    if (!publicRoomParagraph.has(publicSharedRoomId)) {
+    if (!publicRooms.has(publicSharedRoomId)) {
       const randomindex = Math.floor(Math.random() * paragraphs.length);
-      const selectedSentence = paragraphs[randomindex];
-      publicRoomParagraph.set(publicSharedRoomId, selectedSentence)
-
+      publicRooms.set(publicSharedRoomId, {
+        paragraph: paragraphs[randomindex],
+        lastState: new Map(),
+        pendingBatch: new Map()
+      });
     }
+    const room = publicRooms.get(publicSharedRoomId);
     socket.emit("room-state", {
       roomId: publicSharedRoomId,
-      paragraph: publicRoomParagraph.get(publicSharedRoomId),
+      paragraph: room.paragraph,
       characterNumber: socket.characterNumber
     });
-    if (publicRoomLastState.has(publicSharedRoomId)) {
-      for (const [, state] of publicRoomLastState.get(publicSharedRoomId)) {
-        socket.emit("receive-message", state);
-      }
+    for (const [, state] of room.lastState) {
+      socket.emit("receive-message", state);
     }
     console.log(`User ${socket.id} joined room ${publicSharedRoomId}`);
     if (publicQueue.length >= 2) {
-      console.log("NEW ROOM CREATED")
+      console.log("NEW ROOM CREATED");
       publicQueue = [];
-      characterNumsPublic = [0,1,2,3,4];
+      characterNumsPublic = [0, 1, 2, 3, 4];
       public_game.to(publicSharedRoomId).emit("room-status", { status: "filled" });
       publicSharedRoomId = Math.random().toString(36).slice(2, 8).toLowerCase();
     }
-
   });
 
   socket.on("disconnecting", () => {
     for (const roomId of socket.rooms) {
       if (roomId !== socket.id) {
-        const room = io.sockets.adapter.rooms.get(roomId);
-        const roomSize = room ? room.size : 0;
-
+        const socketRoom = io.sockets.adapter.rooms.get(roomId);
+        const roomSize = socketRoom ? socketRoom.size : 0;
         if (roomSize === 1) {
-          publicRoomParagraph.delete(roomId);
-          publicRoomLastState.delete(roomId);
-          publicRoomPendingBatch.delete(roomId);
+          publicRooms.delete(roomId);
           console.log(`Deleted data for room ${roomId}`);
         } else {
-          publicRoomLastState.get(roomId)?.delete(socket.id);
+          publicRooms.get(roomId)?.lastState.delete(socket.id);
           public_game.to(roomId).emit("user-left", { senderId: socket.id });
         }
-
         console.log(`User ${socket.id} leaving room ${roomId}`);
       }
     }
   });
+
   socket.on("send-message", ({ message, typeObject }) => {
     const roomId = socket.currentRoomId;
     if (!roomId) return;
@@ -194,93 +188,75 @@ public_game.on("connection", (socket) => {
       message,
       typeObject
     };
-    if (!publicRoomLastState.has(roomId)) publicRoomLastState.set(roomId, new Map());
-    publicRoomLastState.get(roomId).set(socket.id, msg);
-    if (!publicRoomPendingBatch.has(roomId)) publicRoomPendingBatch.set(roomId, new Map());
-    publicRoomPendingBatch.get(roomId).set(socket.id, msg);
+    const room = publicRooms.get(roomId);
+    if (!room) return;
+    room.lastState.set(socket.id, msg);
+    room.pendingBatch.set(socket.id, msg);
   });
+
   socket.on("disconnect", () => {
     publicQueue = publicQueue.filter(item => item.socket.id !== socket.id);
-    // publicRooms = publicRooms.delete(socket.id);
     console.log("User disconnected and removed from queue:", socket.id);
   });
 });
 
 
 /* Private Game */
-const privateRoomParagraph = new Map();
-const privateRoomLastState = new Map(); 
-const privateRoomPendingBatch = new Map();
-const privateRoomQueue =  new Map();
-const characterNumsPrivate = new Map();
-const privateRoomSize =  new Map();
+
+// privateRooms: Map<roomId, { paragraph, lastState, pendingBatch, queue, characterNums, size }>
+const privateRooms = new Map();
 const private_game = io.of("/private_game");
 private_game.use(authMiddleware);
 let privateSharedRoomId = Math.random().toString(36).slice(2, 8).toLowerCase();
 private_game.on("connection", (socket) => {
   console.log("\nUser connected:$$$$$$$$$$$$$$$$", socket.id);
-  // console.log("handshake.address:", socket.handshake.address);
-  // console.log("x-forwarded-for:", socket.handshake.headers["x-forwarded-for"]);
-  // console.log("remoteAddress:", socket.request.connection.remoteAddress,"\n");
-  socket.on("join-room", ({ roomId, roomSize}) => {
-
-    // console.log((roomId)?`THERE IS ROOM ID:${roomId}`:"THERE IS NO ROOM ID"); 
-    // console.log("roomSize:",roomSize);
+  socket.on("join-room", ({ roomId, roomSize }) => {
     socket.join(roomId);
     socket.currentRoomId = roomId;
-    
-    if (!privateRoomQueue.has(roomId)){
-      privateRoomSize.set(roomId,roomSize);
-      privateRoomQueue.set(roomId,[socket]);
-      characterNumsPrivate.set(roomId,[0,1,2,3,4]);
-    }else{
-      privateRoomQueue.get(roomId).push(socket);
-    }
-    let index = Math.floor(Math.random()*characterNumsPrivate.get(roomId).length);
-    socket.characterNumber = characterNumsPrivate.get(roomId)[index]
-    characterNumsPrivate.get(roomId).splice(index, 1);
-    if (!privateRoomParagraph.has(roomId)) {
+    if (!privateRooms.has(roomId)) {
       const randomindex = Math.floor(Math.random() * paragraphs.length);
-      const selectedSentence = paragraphs[randomindex];
-      privateRoomParagraph.set(roomId, selectedSentence);
+      privateRooms.set(roomId, {
+        paragraph: paragraphs[randomindex],
+        lastState: new Map(),
+        pendingBatch: new Map(),
+        queue: [socket],
+        characterNums: [0, 1, 2, 3, 4],
+        size: roomSize
+      });
+    } else {
+      privateRooms.get(roomId).queue.push(socket);
     }
+    const room = privateRooms.get(roomId);
+    let index = Math.floor(Math.random() * room.characterNums.length);
+    socket.characterNumber = room.characterNums[index];
+    room.characterNums.splice(index, 1);
     socket.emit("room-state", {
-      roomId: roomId,
-      paragraph: privateRoomParagraph.get(roomId),
+      roomId,
+      paragraph: room.paragraph,
       characterNumber: socket.characterNumber
     });
-    if (privateRoomLastState.has(roomId)) {
-      for (const [, state] of privateRoomLastState.get(roomId)) {
-        socket.emit("receive-message", state);
-      }
+    for (const [, state] of room.lastState) {
+      socket.emit("receive-message", state);
     }
-    console.log(`User ${socket.id} joined room ${roomId} with privateRoomQueue.get(roomId).length being:`,privateRoomQueue.get(roomId).length );
-    if (privateRoomQueue.get(roomId).length >= privateRoomSize.get(roomId)) {
-      console.log("NEW ROOM CREATED")
+    console.log(`User ${socket.id} joined room ${roomId} with queue length:`, room.queue.length);
+    if (room.queue.length >= room.size) {
+      console.log("NEW ROOM CREATED");
       private_game.to(roomId).emit("room-status", { status: "filled" });
     }
-
   });
 
   socket.on("disconnecting", () => {
     for (const roomId of socket.rooms) {
       if (roomId !== socket.id) {
-        const room = io.sockets.adapter.rooms.get(roomId);
-        const roomSize = room ? room.size : 0;
-
+        const socketRoom = io.sockets.adapter.rooms.get(roomId);
+        const roomSize = socketRoom ? socketRoom.size : 0;
         if (roomSize === 1) {
-          privateRoomParagraph.delete(roomId);
-          privateRoomLastState.delete(roomId);
-          privateRoomPendingBatch.delete(roomId);
-          characterNumsPrivate.delete(roomId);
-          privateRoomQueue.delete(roomId);
-          privateRoomSize.delete(roomId);
+          privateRooms.delete(roomId);
           console.log(`Deleted data for room ${roomId}`);
         } else {
-          privateRoomLastState.get(roomId)?.delete(socket.id);
+          privateRooms.get(roomId)?.lastState.delete(socket.id);
           private_game.to(roomId).emit("user-left", { senderId: socket.id });
         }
-
         console.log(`User ${socket.id} leaving room ${roomId}`);
       }
     }
@@ -296,11 +272,12 @@ private_game.on("connection", (socket) => {
       message,
       typeObject
     };
-    if (!privateRoomLastState.has(roomId)) privateRoomLastState.set(roomId, new Map());
-    privateRoomLastState.get(roomId).set(socket.id, msg);
-    if (!privateRoomPendingBatch.has(roomId)) privateRoomPendingBatch.set(roomId, new Map());
-    privateRoomPendingBatch.get(roomId).set(socket.id, msg);
+    const room = privateRooms.get(roomId);
+    if (!room) return;
+    room.lastState.set(socket.id, msg);
+    room.pendingBatch.set(socket.id, msg);
   });
+
   socket.on("disconnect", () => {
     console.log("User disconnected and removed from queue:", socket.id);
   });
@@ -311,18 +288,18 @@ private_game.on("connection", (socket) => {
 const BATCH_INTERVAL_MS = 50;
 
 setInterval(() => {
-  for (const [roomId, pendingMap] of publicRoomPendingBatch) {
-    if (pendingMap.size === 0) continue;
-    public_game.to(roomId).emit("batch-update", Array.from(pendingMap.values()));
-    pendingMap.clear();
+  for (const [roomId, room] of publicRooms) {
+    if (room.pendingBatch.size === 0) continue;
+    public_game.to(roomId).emit("batch-update", Array.from(room.pendingBatch.values()));
+    room.pendingBatch.clear();
   }
 }, BATCH_INTERVAL_MS);
 
 setInterval(() => {
-  for (const [roomId, pendingMap] of privateRoomPendingBatch) {
-    if (pendingMap.size === 0) continue;
-    private_game.to(roomId).emit("batch-update", Array.from(pendingMap.values()));
-    pendingMap.clear();
+  for (const [roomId, room] of privateRooms) {
+    if (room.pendingBatch.size === 0) continue;
+    private_game.to(roomId).emit("batch-update", Array.from(room.pendingBatch.values()));
+    room.pendingBatch.clear();
   }
 }, BATCH_INTERVAL_MS);
 
@@ -335,13 +312,12 @@ httpServer.listen(PORT, () => {
 });
 app.get("/api/create-room", (req, res) => {
   if (req.query.roomType == "private") {
-      privateSharedRoomId = Math.random().toString(36).slice(2, 8).toLowerCase();
+    privateSharedRoomId = Math.random().toString(36).slice(2, 8).toLowerCase();
     res.json({ privateSharedRoomId });
   } else if (req.query.roomType == "public") {
     res.json({ publicSharedRoomId });
-  }else{
+  } else {
     privateSharedRoomId = req.query.roomType;
     res.json({ privateSharedRoomId });
   }
-
 });
