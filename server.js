@@ -285,7 +285,7 @@ private_game.on("connection", (socket) => {
 
 /* ------------------ Batch Flush Intervals ------------------ */
 
-const BATCH_INTERVAL_MS = 50;
+const BATCH_INTERVAL_MS = 200;
 
 setInterval(() => {
   for (const [roomId, room] of publicRooms) {
