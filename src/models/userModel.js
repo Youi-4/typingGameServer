@@ -70,50 +70,30 @@ export async function createAccount(emailAddress, password, user, verification) 
 
 export async function updateStats(accountId, wpm, won) {
     try {
-        console.log("hkkkk")
-        const query = `SELECT race_avg,race_last,race_best,race_won,race_completed FROM account_stats WHERE accountid = $1`;
-        const { rows: race_rows } = await db.query(query, [accountId]);
-        if (won) {
-
-            const query_won_update = `UPDATE account_stats SET race_won = $1 WHERE accountid = $2`; 
-            await db.query(query_won_update, [race_rows[0]?.race_won+1, accountId]);
-        }
-        if (race_rows[0]?.race_best < wpm){
-            const query_race_best = `UPDATE account_stats SET race_best = $1 WHERE accountid = $2`; 
-            await db.query(query_race_best, [wpm, accountId]);
-        }
-        const query_race_last = `UPDATE account_stats SET race_last = $1 WHERE accountid = $2`; 
-        await db.query(query_race_last, [wpm, accountId]);
-        
-        const query_race_avg = `UPDATE account_stats SET race_avg = $1 WHERE accountid = $2`; 
-        await db.query(query_race_avg, [((race_rows[0]?.race_avg * race_rows[0]?.race_completed) + wpm) / (race_rows[0]?.race_completed + 1), accountId]);
-
-
-
-        const query_race_completed = `UPDATE account_stats SET race_completed = $1 WHERE accountid = $2`; 
-        await db.query(query_race_completed, [race_rows[0]?.race_completed+1, accountId]);
-        console.log(race_rows[0]?.race_won, wpm, won)
-
-
+        await db.query(
+            `UPDATE account_stats SET
+                race_won       = COALESCE(race_won, 0) + $1,
+                race_best      = GREATEST(COALESCE(race_best, 0), $2),
+                race_last      = $2,
+                race_avg       = (COALESCE(race_avg, 0) * COALESCE(race_completed, 0) + $2) / (COALESCE(race_completed, 0) + 1),
+                race_completed = COALESCE(race_completed, 0) + 1
+            WHERE accountid = $3`,
+            [won ? 1 : 0, wpm, accountId]
+        );
         return null;
     } catch (error) {
-        console.error("Error creating account:", error);
-        throw new Error("Unable to updateStats an account: " + error.message)
+        console.error("Error updating stats:", error);
+        throw new Error("Unable to updateStats: " + error.message)
     }
-
 }
 
-export async function getStatsByUsername(userName) {
+export async function getStats(accountId) {
     try {
-        const query = `
-            SELECT a.race_avg, a.race_last, a.race_best, a.race_won, a.race_completed
-            FROM account_stats a
-            JOIN account acc ON a.accountid = acc.accountid
-            WHERE acc."user" = $1`;
-        const { rows } = await db.query(query, [userName]);
+        const query = `SELECT race_avg,race_last,race_best,race_won,race_completed FROM account_stats WHERE accountid = $1`;
+        const { rows } = await db.query(query, [accountId]);
         return rows[0] || null;
     } catch (error) {
-        throw new Error("Error fetching stats by username: " + error.message);
+        throw new Error("Unable to getStats: " + error.message);
     }
 }
 

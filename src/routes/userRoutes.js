@@ -1,6 +1,6 @@
 import express from "express";
 import rateLimit from "express-rate-limit";
-import { userLogin,signupUser,getUserBySession,getUserByID,updateUserStats,getPlayerStatsByName} from "../controllers/userController.js";
+import { userLogin,signupUser,getUserBySession,getUserByID,updateUserStats,getUserStats} from "../controllers/userController.js";
 
 const router = express.Router();
 
@@ -18,5 +18,5 @@ router.post("/signup", authLimiter, signupUser);
 router.post("/profile/get/userBySession", getUserBySession);
 router.post("/profile/get", getUserByID);
 router.post("/profile/updateStats",updateUserStats)
-router.post("/profile/stats/byUsername", getPlayerStatsByName)
+router.post("/profile/getStats", getUserStats)
 export default router;

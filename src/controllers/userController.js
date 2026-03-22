@@ -3,7 +3,7 @@ import crypto from "crypto";
 import jwt from "jsonwebtoken";
 import dotenv from "dotenv";
 dotenv.config();
-import { getUserByEmail, createAccount, updateSessionId, getUserByUserName, getUserBySessionID, updateStats, getStatsByUsername } from "../models/userModel.js";
+import { getUserByEmail, createAccount, updateSessionId, getUserByUserName, getUserBySessionID, updateStats, getStats } from "../models/userModel.js";
 
 async function userLogin(req, res) {
   try {
@@ -168,18 +168,21 @@ async function updateUserStats(req, res) {
 }
 
 
-async function getPlayerStatsByName(req, res) {
+async function getUserStats(req, res) {
   try {
-    const { username } = req.body;
-    const stats = await getStatsByUsername(username);
-    if (stats) {
-      res.status(200).json({ message: stats });
+    const token = req.cookies?.token;
+    if (!token) return res.status(401).json({ error: "Missing auth token" });
+    const decoded = jwt.verify(token, process.env.SECRET_KEY || "your-secret-key");
+    const account_id = decoded.account_id;
+    const user_stats = await getStats(account_id);
+    if (user_stats) {
+      res.status(200).json({ message: user_stats });
     } else {
-      res.status(404).json({ error: "User not found." });
+      res.status(404).json({ error: "Stats not found." });
     }
   } catch (error) {
     res.status(500).json({ error: "Internal server error" });
   }
 }
 
-export { userLogin, signupUser, getUserBySession, getUserByID, updateUserStats, getPlayerStatsByName };
+export { userLogin, signupUser, getUserBySession, getUserByID, updateUserStats, getUserStats };
