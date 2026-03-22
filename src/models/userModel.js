@@ -97,6 +97,21 @@ export async function getStats(accountId) {
     }
 }
 
+export async function getStatsByUsername(username) {
+    try {
+        const query = `
+            SELECT s.race_avg, s.race_last, s.race_best, s.race_won, s.race_completed
+            FROM account_stats s
+            JOIN account a ON a.accountid = s.accountid
+            WHERE a."user" = $1
+        `;
+        const { rows } = await db.query(query, [username]);
+        return rows[0] || null;
+    } catch (error) {
+        throw new Error("Unable to getStatsByUsername: " + error.message);
+    }
+}
+
 export async function getUserByUserName(userName) {
     try {
 

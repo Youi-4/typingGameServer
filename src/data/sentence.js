@@ -5,9 +5,9 @@ export const paragraphs = [
     
     "Stem is the posterior part that remains above the ground and grows negatively geotropic. Internodes and nodes are found on the stem. Branch, bud, leaf, petiole, flower, and inflorescence on a node are all those parts of the plant that remain above the ground and undergo negative subsoil development.",
     
-    "It is the blossom of a plant. A flower is the part of a plant that produces seeds, which eventually become other flowers. The majority of flowers are hermaphrodites, meaning they have both male and female components. ",
+    "It is the blossom of a plant. A flower is the part of a plant that produces seeds, which eventually become other flowers. The majority of flowers are hermaphrodites, meaning they have both male and female components.",
     
-    "An aunt is a bassoon from the right perspective. As far as we can estimate, some posit the melic myanmar to be less than kutcha. One cannot separate foods from blowzy bows. The scampish closet reveals itself as a sclerous llama to those who look. ",
+    "An aunt is a bassoon from the right perspective. As far as we can estimate, some posit the melic myanmar to be less than kutcha. One cannot separate foods from blowzy bows. The scampish closet reveals itself as a sclerous llama to those who look.",
 
     "Some posit the melic myanmar to be less than kutcha. One cannot separate foods from blowzy bows. The scampish closet reveals",
 

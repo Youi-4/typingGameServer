@@ -3,7 +3,7 @@ import crypto from "crypto";
 import jwt from "jsonwebtoken";
 import dotenv from "dotenv";
 dotenv.config();
-import { getUserByEmail, createAccount, updateSessionId, getUserByUserName, getUserBySessionID, updateStats, getStats } from "../models/userModel.js";
+import { getUserByEmail, createAccount, updateSessionId, getUserByUserName, getUserBySessionID, updateStats, getStats, getStatsByUsername } from "../models/userModel.js";
 
 async function userLogin(req, res) {
   try {
@@ -185,4 +185,15 @@ async function getUserStats(req, res) {
   }
 }
 
-export { userLogin, signupUser, getUserBySession, getUserByID, updateUserStats, getUserStats };
+async function getPlayerStatsByName(req, res) {
+  try {
+    const { username } = req.query;
+    if (!username) return res.status(400).json({ error: "Username required" });
+    const stats = await getStatsByUsername(username);
+res.status(200).json({ message: stats ?? { race_avg: 0, race_last: 0, race_best: 0, race_won: 0, race_completed: 0 } });
+  } catch (error) {
+    res.status(500).json({ error: "Internal server error" });
+  }
+}
+
+export { userLogin, signupUser, getUserBySession, getUserByID, updateUserStats, getUserStats, getPlayerStatsByName };
