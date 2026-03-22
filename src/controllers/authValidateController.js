@@ -1,5 +1,3 @@
-import dotenv from "dotenv";
-dotenv.config();
 import { getUserByAccountID } from "../models/userModel.js";
 
 export const authValidate = async (req, res) => {

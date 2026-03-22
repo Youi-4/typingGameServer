@@ -4,7 +4,7 @@ import dotenv from "dotenv";
 import cookieParser from "cookie-parser";
 import { createServer } from "http";
 import { Server } from "socket.io";
-import { paragraphs, paragraphWordMeans } from "./src/data/sentence.js";
+import { paragraphs } from "./src/data/sentence.js";
 import cookie from "cookie";
 import jwt from "jsonwebtoken";
 import { getUserByAccountID } from "./src/models/userModel.js";
