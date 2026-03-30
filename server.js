@@ -46,6 +46,18 @@ app.use(express.json({ limit: "10mb" }));
 app.use(express.urlencoded({ limit: "10mb", extended: true }));
 app.use(cookieParser());
 
+/* ------------------ Visitor Logging ------------------ */
+const myIp = process.env.MY_IP;
+const seenIps = new Set();
+app.use((req, res, next) => {
+  const ip = req.headers["x-forwarded-for"]?.split(",")[0]?.trim() || req.ip;
+  if (ip && ip !== myIp && !seenIps.has(ip)) {
+    seenIps.add(ip);
+    console.log(`[NEW VISITOR] ${new Date().toISOString()} | IP: ${ip}`);
+  }
+  next();
+});
+
 /* ------------------ Routes ------------------ */
 
 
@@ -96,7 +108,7 @@ const authMiddleware = async (socket, next) => {
       socket.username = decoded.account_id;
       socket.accountId = decoded.account_id;
       socket.isGuest = true;
-      console.log(`Socket authenticated (guest): ${socket.username}`);
+      //console.log(`Socket authenticated (guest): ${socket.username}`);
       return next();
     }
 
@@ -123,10 +135,7 @@ let characterNumsPublic = [0, 1, 2, 3, 4];
 const public_game = io.of("/public_game");
 public_game.use(authMiddleware);
 public_game.on("connection", (socket) => {
-  console.log("\nUser connected:", socket.id);
-  console.log("handshake.address:", socket.handshake.address);
-  console.log("x-forwarded-for:", socket.handshake.headers["x-forwarded-for"]);
-  console.log("remoteAddress:", socket.request.connection.remoteAddress, "\n");
+  console.log(`User connected: ${socket.id} | IP: ${socket.handshake.headers["x-forwarded-for"] || socket.handshake.address}`);
   socket.on("join-room", ({ }) => {
     publicQueue.push({ socket });
     let index = Math.floor(Math.random() * characterNumsPublic.length);
@@ -151,7 +160,7 @@ public_game.on("connection", (socket) => {
     for (const [, state] of room.lastState) {
       socket.emit("receive-message", state);
     }
-    console.log(`User ${socket.id} joined room ${publicSharedRoomId}`);
+    //console.log(`User ${socket.id} joined room ${publicSharedRoomId}`);
     if (publicQueue.length >= 2) {
       console.log("NEW ROOM CREATED");
       publicQueue = [];
@@ -196,7 +205,7 @@ public_game.on("connection", (socket) => {
 
   socket.on("disconnect", () => {
     publicQueue = publicQueue.filter(item => item.socket.id !== socket.id);
-    console.log("User disconnected and removed from queue:", socket.id);
+    //console.log("User disconnected and removed from queue:", socket.id);
   });
 });
 
@@ -209,7 +218,7 @@ const private_game = io.of("/private_game");
 private_game.use(authMiddleware);
 let privateSharedRoomId = Math.random().toString(36).slice(2, 8).toLowerCase();
 private_game.on("connection", (socket) => {
-  console.log("\nUser connected:$$$$$$$$$$$$$$$$", socket.id);
+  console.log("\nUser connected:", socket.id);
   socket.on("join-room", ({ roomId, roomSize }) => {
     socket.join(roomId);
     socket.currentRoomId = roomId;
@@ -238,7 +247,7 @@ private_game.on("connection", (socket) => {
     for (const [, state] of room.lastState) {
       socket.emit("receive-message", state);
     }
-    console.log(`User ${socket.id} joined room ${roomId} with queue length:`, room.queue.length);
+    //console.log(`User ${socket.id} joined room ${roomId} with queue length:`, room.queue.length);
     if (room.queue.length >= room.size) {
       console.log("NEW ROOM CREATED");
       private_game.to(roomId).emit("room-status", { status: "filled" });
@@ -279,7 +288,7 @@ private_game.on("connection", (socket) => {
   });
 
   socket.on("disconnect", () => {
-    console.log("User disconnected and removed from queue:", socket.id);
+    //console.log("User disconnected and removed from queue:", socket.id);
   });
 });
 
