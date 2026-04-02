@@ -29,8 +29,8 @@ async function userLogin(req, res) {
       user = await getUserByUserName(userName_or_email.toLowerCase());
       if (!user) {
         return res.status(404).json({
-          id: "email or userName",
-          error: "User not found"
+        id: "loginError",
+        error: "Invalid username or password."
         });
       }
 
@@ -68,8 +68,8 @@ async function userLogin(req, res) {
       });
     } else {
       return res.status(400).json({
-        id: "loginPassword",
-        error: "Password is not matched."
+        id: "loginError",
+        error: "Invalid username or password."
       });
     }
   } catch (err) {
