@@ -1,8 +1,15 @@
 import express from "express";
 import rateLimit from "express-rate-limit";
-const router = express.Router();
-import { getLoggedinUser, logout, refreshToken, getSocketToken, getGuestToken } from "../controllers/authController.js";
+
+import {
+  getGuestToken,
+  getLoggedinUser,
+  getSocketToken,
+  logout,
+  refreshToken,
+} from "../controllers/authController.js";
 import { authValidate } from "../controllers/authValidateController.js";
+import { googleCallback, googleRedirect } from "../controllers/googleAuthController.js";
 import { verifyToken } from "../middleware/authMiddleware.js";
 
 const refreshLimiter = rateLimit({
@@ -13,11 +20,35 @@ const refreshLimiter = rateLimit({
   legacyHeaders: false,
 });
 
-router.get("/get-loggedin-user", verifyToken, getLoggedinUser);
-router.get("/status", verifyToken, authValidate);
-router.post("/logout", verifyToken, logout);
-router.post("/refresh", refreshLimiter, refreshToken);
-router.get("/socket-token", verifyToken, getSocketToken);
-router.get("/guest-token", getGuestToken);
+export function createAuthRouter({
+  verifyAuthToken = verifyToken,
+  validateAuth = authValidate,
+  handlers = {
+    getLoggedinUser,
+    logout,
+    refreshToken,
+    getSocketToken,
+    getGuestToken,
+  },
+  googleHandlers = {
+    googleRedirect,
+    googleCallback,
+  },
+} = {}) {
+  const router = express.Router();
+
+  router.get("/get-loggedin-user", verifyAuthToken, handlers.getLoggedinUser);
+  router.get("/status", verifyAuthToken, validateAuth);
+  router.post("/logout", verifyAuthToken, handlers.logout);
+  router.post("/refresh", refreshLimiter, handlers.refreshToken);
+  router.get("/socket-token", verifyAuthToken, handlers.getSocketToken);
+  router.get("/guest-token", handlers.getGuestToken);
+  router.get("/google", googleHandlers.googleRedirect);
+  router.get("/google/callback", googleHandlers.googleCallback);
+
+  return router;
+}
+
+const router = createAuthRouter();
 
 export default router;

@@ -1,27 +1,29 @@
 # Typing Game Server
 
-This is a server that handles all the tasks needed for https://github.com/Youi-4/typingGameClient.
+Express and Socket.IO backend for the multiplayer typing game. It handles authentication, room management, realtime race updates, and player stats.
 
-To view the online frontend working, please visit: https://typing-game-client-pi.vercel.app
+## Stack
 
-## Features
-- User authentication
-- CRUD operations
-- JWT authorization
-- Postgresql database
-
-## Tech Stack
 - Node.js
 - Express
-- Postgresql
+- Socket.IO
+- PostgreSQL
+- JWT cookies
 
-## How to Run server at: https://github.com/Youi-4/typingGameServer
-1. Clone this repo 
-2. Run npm install
-3. Create .env file with values corresponding with your Postgresql database
-4. Run "npm run dev"
+## Setup
 
-## How to Run Client at: https://github.com/Youi-4/typingGameSClient
-1. Clone this repo 
-2. Run npm install
-4. Run "npm run dev"
+1. Install dependencies with `npm install`.
+2. Copy `.env.example` to `.env`.
+3. Fill in your local database and auth values. Do not commit real secrets.
+4. Start the server with `npm run dev`.
+
+## Scripts
+
+- `npm run dev` starts the backend with nodemon.
+- `npm start` starts the production server.
+- `npm test` runs the server test suite.
+
+## Notes
+
+- Keep screenshots and shared examples scrubbed of real tokens, secrets, and callback credentials.
+- The client project lives separately and should point `VITE_API_URL` at this server.

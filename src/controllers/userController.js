@@ -1,82 +1,29 @@
 import bcrypt from "bcrypt";
 import crypto from "crypto";
 import jwt from "jsonwebtoken";
-import dotenv from "dotenv";
-dotenv.config();
-import { getUserByEmail, createAccount, updateSessionId, getUserByUserName, getUserBySessionID, updateStats, getStats, getStatsByUsername, getLeaderboard } from "../models/userModel.js";
 
-async function userLogin(req, res) {
-  try {
-    console.log("Login request received");
-    console.log("Request body:", req.body);
-    console.log("Request content-type:", req.get('content-type'));
-
-    const { userName_or_email, password } = req.body;
-
-    console.log("userName_or_email:", userName_or_email);
-    console.log("password:", password);
-
-    if (!userName_or_email || !password) {
-      console.log("Missing fields - validation error");
-      return res.status(400).json({
-        id: "validation",
-        error: "Email and password are required"
-      });
-    }
-
-    let user = await getUserByEmail(userName_or_email.toLowerCase());
-    if (!user) {
-      user = await getUserByUserName(userName_or_email.toLowerCase());
-      if (!user) {
-        return res.status(404).json({
-        id: "loginError",
-        error: "Invalid username or password."
-        });
-      }
-
-    }
-
-    const isMatch = await bcrypt.compare(password, user.password);
-
-    if (isMatch) {
-      const sessionId = crypto.randomBytes(32).toString("hex");
-      await updateSessionId(user.accountid, sessionId);
-      console.log("Session ID:", sessionId);
-      // Generate JWT token with the fields expected by auth middleware
-      const token = jwt.sign(
-        { account_id: user.accountid, email: user.emailaddress, session_id: sessionId },
-        process.env.SECRET_KEY || "your-secret-key",
-        { expiresIn: "7d" }
-      );
-
-      // Set token in cookie using the name expected by middleware
-      res.cookie("token", token, {
-        httpOnly: true,
-        secure: true,
-        sameSite: "none",
-        maxAge: 7 * 24 * 60 * 60 * 1000
-      });
-
-      return res.status(200).json({
-        success: true,
-        message: "Login successful",
-        user: {
-          id: user.accountid,
-          email: user.emailaddress,
-          name: user.user
-        }
-      });
-    } else {
-      return res.status(400).json({
-        id: "loginError",
-        error: "Invalid username or password."
-      });
-    }
-  } catch (err) {
-    console.error("Login error:", err);
-    res.status(500).json({ error: err.message });
-  }
-}
+import {
+  AUTH_COOKIE_NAME,
+  getAuthCookieOptions,
+  getJwtSecret,
+} from "../config/auth.js";
+import { toLoginResponseDto } from "../dto/authDto.js";
+import {
+  toLeaderboardResponseDto,
+  toStatsResponseDto,
+} from "../dto/statsDto.js";
+import {
+  createAccount,
+  getLeaderboard,
+  getStats,
+  getStatsByUsername,
+  getUserByAccountID,
+  getUserByEmail,
+  getUserBySessionID,
+  getUserByUserName,
+  updateSessionId,
+  updateStats,
+} from "../models/userModel.js";
 
 const USERNAME_RE = /^[a-zA-Z0-9_-]{3,20}$/;
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -85,144 +32,232 @@ const PASSWORD_LOWER = /[a-z]/;
 const PASSWORD_DIGIT = /[0-9]/;
 const PASSWORD_SPECIAL = /[@$!%*?&_#^()]/;
 
-async function signupUser(req, res) {
-  try {
-    const { email, password, user, verified } = req.body;
+export function createUserController({
+  getUserByEmailAddress = getUserByEmail,
+  createUserAccount = createAccount,
+  updateUserSessionId = updateSessionId,
+  getUserByUserNameValue = getUserByUserName,
+  getUserBySessionIdValue = getUserBySessionID,
+  getUserByAccountId = getUserByAccountID,
+  updateUserStatsInStore = updateStats,
+  getUserStatsFromStore = getStats,
+  getStatsByUserName = getStatsByUsername,
+  getLeaderboardEntries = getLeaderboard,
+  comparePassword = bcrypt.compare,
+  hashPassword = bcrypt.hash,
+  signJwt = jwt.sign,
+  verifyJwt = jwt.verify,
+  createSessionId = () => crypto.randomBytes(32).toString("hex"),
+  jwtSecret = getJwtSecret(),
+  cookieName = AUTH_COOKIE_NAME,
+  authCookieOptions = getAuthCookieOptions(),
+}) {
+  const userLogin = async (req, res) => {
+    try {
+      const { userName_or_email, password } = req.body;
 
-    if (!user || !USERNAME_RE.test(user)) {
-      return res.status(400).json({ error: "Username must be 3–20 characters and contain only letters, numbers, _ or -." });
-    }
-    if (!email || !EMAIL_RE.test(email)) {
-      return res.status(400).json({ error: "Invalid email address." });
-    }
-    if (!password || password.length < 6 || password.length > 64) {
-      return res.status(400).json({ error: "Password must be between 6 and 64 characters." });
-    }
-    if (!PASSWORD_UPPER.test(password) || !PASSWORD_LOWER.test(password) || !PASSWORD_DIGIT.test(password) || !PASSWORD_SPECIAL.test(password)) {
-      return res.status(400).json({ error: "Password must contain uppercase, lowercase, a number, and a special character (@$!%*?&_#^())." });
-    }
+      if (!userName_or_email || !password) {
+        return res.status(400).json({
+          id: "validation",
+          error: "Email and password are required",
+        });
+      }
 
-    const userCheck = await getUserByEmail(email);
-    if (userCheck) {
-      res.status(409).json({ error: "Email already exists." });
-      return;
+      const normalizedIdentifier = userName_or_email.trim().toLowerCase();
+      let user = await getUserByEmailAddress(normalizedIdentifier);
+      if (!user) {
+        user = await getUserByUserNameValue(normalizedIdentifier);
+      }
+
+      if (!user || !user.password) {
+        return res.status(401).json({
+          id: "loginError",
+          error: "Invalid username or password.",
+        });
+      }
+
+      const isMatch = await comparePassword(password, user.password);
+      if (!isMatch) {
+        return res.status(401).json({
+          id: "loginError",
+          error: "Invalid username or password.",
+        });
+      }
+
+      const sessionId = createSessionId();
+      await updateUserSessionId(user.accountid, sessionId);
+
+      const token = signJwt(
+        {
+          account_id: user.accountid,
+          email: user.emailaddress,
+          session_id: sessionId,
+        },
+        jwtSecret,
+        { expiresIn: "7d" }
+      );
+
+      res.cookie(cookieName, token, authCookieOptions);
+      return res.status(200).json(toLoginResponseDto(user));
+    } catch (_error) {
+      return res.status(500).json({ error: "Internal server error" });
     }
-    const userCheckTwo = await getUserByUserName(user);
-    if (userCheckTwo) {
-      console.log("\n\n", userCheckTwo, "\n\n");
-      res.status(409).json({ error: "Username already exists." });
-      return;
+  };
+
+  const signupUser = async (req, res) => {
+    try {
+      const { email, password, user, verified } = req.body;
+
+      if (!user || !USERNAME_RE.test(user)) {
+        return res.status(400).json({
+          error: "Username must be 3-20 characters and contain only letters, numbers, _ or -.",
+        });
+      }
+      if (!email || !EMAIL_RE.test(email)) {
+        return res.status(400).json({ error: "Invalid email address." });
+      }
+      if (!password || password.length < 6 || password.length > 64) {
+        return res.status(400).json({ error: "Password must be between 6 and 64 characters." });
+      }
+      if (
+        !PASSWORD_UPPER.test(password) ||
+        !PASSWORD_LOWER.test(password) ||
+        !PASSWORD_DIGIT.test(password) ||
+        !PASSWORD_SPECIAL.test(password)
+      ) {
+        return res.status(400).json({
+          error: "Password must contain uppercase, lowercase, a number, and a special character (@$!%*?&_#^()).",
+        });
+      }
+
+      if (await getUserByEmailAddress(email)) {
+        return res.status(409).json({ error: "Email already exists." });
+      }
+
+      if (await getUserByUserNameValue(user)) {
+        return res.status(409).json({ error: "Username already exists." });
+      }
+
+      const hash = await hashPassword(password, 10);
+      await createUserAccount(email, hash, user, verified);
+      return res.status(201).json({ success: true, message: "User created successfully" });
+    } catch (_error) {
+      return res.status(500).json({ error: "Internal server error" });
     }
-    const saltRounds = 10; // 10–12 is common
-    const hash = await bcrypt.hash(password, saltRounds);
-    const results = await createAccount(email, hash, user, verified);
-    console.log(results);
-    res.status(201).json({ message: "User created successfully" });
-  } catch (error) {
-    console.log(error);
-    res.status(500).json({ error: "Internal server error" });
-  }
+  };
+
+  const getUserBySession = async (req, res) => {
+    try {
+      const token = req.cookies?.[cookieName];
+      if (!token) {
+        return res.status(401).json({ error: "Missing auth token" });
+      }
+
+      const decoded = verifyJwt(token, jwtSecret);
+      const sessionId = decoded?.session_id;
+      if (!sessionId) {
+        return res.status(401).json({ error: "Invalid auth token" });
+      }
+
+      const user = await getUserBySessionIdValue(sessionId);
+      if (!user) {
+        return res.status(404).json({ error: "User could not be found." });
+      }
+
+      return res.status(200).json({ user });
+    } catch (_error) {
+      return res.status(401).json({ error: "Unauthorized" });
+    }
+  };
+
+  const getUserByID = async (req, res) => {
+    try {
+      const { account_id } = req.body;
+      const user = await getUserByAccountId(account_id);
+
+      if (!user) {
+        return res.status(404).json({ error: "User could not be found." });
+      }
+
+      return res.status(200).json({ user });
+    } catch (_error) {
+      return res.status(500).json({ error: "Internal server error" });
+    }
+  };
+
+  const updateUserStats = async (req, res) => {
+    try {
+      if (!req.accountID) {
+        return res.status(401).json({ error: "Missing auth token" });
+      }
+
+      const { won, wpm } = req.body;
+      await updateUserStatsInStore(req.accountID, wpm, won);
+      const updatedStats = await getUserStatsFromStore(req.accountID);
+
+      return res.status(200).json(toStatsResponseDto(updatedStats));
+    } catch (_error) {
+      return res.status(500).json({ error: "Internal server error" });
+    }
+  };
+
+  const getUserStats = async (req, res) => {
+    try {
+      if (!req.accountID) {
+        return res.status(401).json({ error: "Missing auth token" });
+      }
+
+      const stats = await getUserStatsFromStore(req.accountID);
+      return res.status(200).json(toStatsResponseDto(stats));
+    } catch (_error) {
+      return res.status(500).json({ error: "Internal server error" });
+    }
+  };
+
+  const getPlayerStatsByName = async (req, res) => {
+    try {
+      const { username } = req.query;
+      if (!username) {
+        return res.status(400).json({ error: "Username required" });
+      }
+
+      const stats = await getStatsByUserName(username);
+      return res.status(200).json(toStatsResponseDto(stats));
+    } catch (_error) {
+      return res.status(500).json({ error: "Internal server error" });
+    }
+  };
+
+  const getLeaderboardHandler = async (_req, res) => {
+    try {
+      const players = await getLeaderboardEntries(10);
+      return res.status(200).json(toLeaderboardResponseDto(players));
+    } catch (_error) {
+      return res.status(500).json({ error: "Internal server error" });
+    }
+  };
+
+  return {
+    userLogin,
+    signupUser,
+    getUserBySession,
+    getUserByID,
+    updateUserStats,
+    getUserStats,
+    getPlayerStatsByName,
+    getLeaderboardHandler,
+  };
 }
 
+const userController = createUserController({});
 
-async function getUserBySession(req, res) {
-  try {
-    const token = req.cookies?.token;
-    if (!token) {
-      return res.status(401).json({ error: "Missing auth token" });
-    }
-
-    const decoded = jwt.verify(token, process.env.SECRET_KEY || "your-secret-key");
-    const sessionId = decoded?.session_id;
-
-    if (!sessionId) {
-      return res.status(401).json({ error: "Invalid auth token" });
-    }
-
-    const user = await getUserBySessionID(sessionId);
-
-    if (user) {
-      return res.status(200).json({ message: user });
-    }
-
-    return res.status(404).json({ error: "User could not be found." });
-  } catch (error) {
-    console.log(error);
-    return res.status(401).json({ error: "Unauthorized" });
-  }
-}
-
-async function getUserByID(req, res) {
-  try {
-    const { account_id } = req.body;
-    // add validation here
-    const user = await getUserByAccountID(account_id);
-
-    if (user) {
-      res.status(201).json({ message: user });
-    } else {
-      res.status(409).json({ error: "User could not be found." });
-    }
-  } catch (error) {
-    console.log(error);
-    res.status(500).json({ error: "Internal server error" });
-  }
-}
-
-
-
-async function updateUserStats(req, res) {
-  try {
-    const token = req.cookies?.token;
-    if (!token) return res.status(401).json({ error: "Missing auth token" });
-    const { won, wpm } = req.body;
-    const decoded = jwt.verify(token, process.env.SECRET_KEY || "your-secret-key");
-    const account_id = decoded.account_id;
-
-    await updateStats(account_id, wpm, won);
-    res.status(200).json({ message: "Stats updated" });
-  } catch (error) {
-    console.log(error);
-    res.status(500).json({ error: "Internal server error" });
-  }
-}
-
-
-async function getUserStats(req, res) {
-  try {
-    const token = req.cookies?.token;
-    if (!token) return res.status(401).json({ error: "Missing auth token" });
-    const decoded = jwt.verify(token, process.env.SECRET_KEY || "your-secret-key");
-    const account_id = decoded.account_id;
-    const user_stats = await getStats(account_id);
-    if (user_stats) {
-      res.status(200).json({ message: user_stats });
-    } else {
-      res.status(404).json({ error: "Stats not found." });
-    }
-  } catch (error) {
-    res.status(500).json({ error: "Internal server error" });
-  }
-}
-
-async function getPlayerStatsByName(req, res) {
-  try {
-    const { username } = req.query;
-    if (!username) return res.status(400).json({ error: "Username required" });
-    const stats = await getStatsByUsername(username);
-res.status(200).json({ message: stats ?? { race_avg: 0, race_last: 0, race_best: 0, race_won: 0, race_completed: 0 } });
-  } catch (error) {
-    res.status(500).json({ error: "Internal server error" });
-  }
-}
-
-async function getLeaderboardHandler(_req, res) {
-  try {
-    const players = await getLeaderboard(10);
-    res.status(200).json({ message: players });
-  } catch (error) {
-    res.status(500).json({ error: "Internal server error" });
-  }
-}
-
-export { userLogin, signupUser, getUserBySession, getUserByID, updateUserStats, getUserStats, getPlayerStatsByName, getLeaderboardHandler };
+export const {
+  userLogin,
+  signupUser,
+  getUserBySession,
+  getUserByID,
+  updateUserStats,
+  getUserStats,
+  getPlayerStatsByName,
+  getLeaderboardHandler,
+} = userController;

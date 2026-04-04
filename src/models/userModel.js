@@ -142,6 +142,33 @@ export async function getLeaderboard(limit = 10) {
     }
 }
 
+export async function findOrCreateGoogleUser({ googleId, email, name }) {
+    try {
+        let { rows } = await db.query(`SELECT * FROM account WHERE google_id = $1`, [googleId]);
+        if (rows[0]) return rows[0];
+
+        ({ rows } = await db.query(`SELECT * FROM account WHERE emailaddress = $1`, [email.toLowerCase()]));
+        if (rows[0]) {
+            await db.query(`UPDATE account SET google_id = $1 WHERE accountid = $2`, [googleId, rows[0].accountid]);
+            return rows[0];
+        }
+
+        let username = name.replace(/\s+/g, '').toLowerCase().slice(0, 15);
+        const { rows: existing } = await db.query(`SELECT 1 FROM account WHERE "user" = $1`, [username]);
+        if (existing[0]) username = username + Math.floor(Math.random() * 9000 + 1000);
+
+        const { rows: newRows } = await db.query(
+            `INSERT INTO account (emailaddress, password, "user", verificationstatus, google_id) VALUES ($1, NULL, $2, TRUE, $3) RETURNING *`,
+            [email.toLowerCase(), username, googleId]
+        );
+        await db.query(`INSERT INTO account_stats (accountid) VALUES ($1)`, [newRows[0].accountid]);
+        return newRows[0];
+    } catch (error) {
+        console.error("Error in findOrCreateGoogleUser:", error);
+        throw new Error("Unable to find or create Google user: " + error.message);
+    }
+}
+
 export async function getUserBySessionID(sessionId) {
     try {
 
