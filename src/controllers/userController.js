@@ -3,7 +3,7 @@ import crypto from "crypto";
 import jwt from "jsonwebtoken";
 import dotenv from "dotenv";
 dotenv.config();
-import { getUserByEmail, createAccount, updateSessionId, getUserByUserName, getUserBySessionID, updateStats, getStats, getStatsByUsername } from "../models/userModel.js";
+import { getUserByEmail, createAccount, updateSessionId, getUserByUserName, getUserBySessionID, updateStats, getStats, getStatsByUsername, getLeaderboard } from "../models/userModel.js";
 
 async function userLogin(req, res) {
   try {
@@ -78,10 +78,30 @@ async function userLogin(req, res) {
   }
 }
 
+const USERNAME_RE = /^[a-zA-Z0-9_-]{3,20}$/;
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const PASSWORD_UPPER = /[A-Z]/;
+const PASSWORD_LOWER = /[a-z]/;
+const PASSWORD_DIGIT = /[0-9]/;
+const PASSWORD_SPECIAL = /[@$!%*?&_#^()]/;
+
 async function signupUser(req, res) {
   try {
     const { email, password, user, verified } = req.body;
-    // add validation here
+
+    if (!user || !USERNAME_RE.test(user)) {
+      return res.status(400).json({ error: "Username must be 3–20 characters and contain only letters, numbers, _ or -." });
+    }
+    if (!email || !EMAIL_RE.test(email)) {
+      return res.status(400).json({ error: "Invalid email address." });
+    }
+    if (!password || password.length < 6 || password.length > 64) {
+      return res.status(400).json({ error: "Password must be between 6 and 64 characters." });
+    }
+    if (!PASSWORD_UPPER.test(password) || !PASSWORD_LOWER.test(password) || !PASSWORD_DIGIT.test(password) || !PASSWORD_SPECIAL.test(password)) {
+      return res.status(400).json({ error: "Password must contain uppercase, lowercase, a number, and a special character (@$!%*?&_#^())." });
+    }
+
     const userCheck = await getUserByEmail(email);
     if (userCheck) {
       res.status(409).json({ error: "Email already exists." });
@@ -196,4 +216,13 @@ res.status(200).json({ message: stats ?? { race_avg: 0, race_last: 0, race_best:
   }
 }
 
-export { userLogin, signupUser, getUserBySession, getUserByID, updateUserStats, getUserStats, getPlayerStatsByName };
+async function getLeaderboardHandler(_req, res) {
+  try {
+    const players = await getLeaderboard(10);
+    res.status(200).json({ message: players });
+  } catch (error) {
+    res.status(500).json({ error: "Internal server error" });
+  }
+}
+
+export { userLogin, signupUser, getUserBySession, getUserByID, updateUserStats, getUserStats, getPlayerStatsByName, getLeaderboardHandler };

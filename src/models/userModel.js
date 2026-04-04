@@ -125,6 +125,23 @@ export async function getUserByUserName(userName) {
 }
 
 
+export async function getLeaderboard(limit = 10) {
+    try {
+        const query = `
+            SELECT a."user" AS username, s.race_best, s.race_avg, s.race_won, s.race_completed
+            FROM account_stats s
+            JOIN account a ON a.accountid = s.accountid
+            WHERE s.race_completed > 0
+            ORDER BY s.race_best DESC
+            LIMIT $1
+        `;
+        const { rows } = await db.query(query, [limit]);
+        return rows;
+    } catch (error) {
+        throw new Error("Unable to getLeaderboard: " + error.message);
+    }
+}
+
 export async function getUserBySessionID(sessionId) {
     try {
 
