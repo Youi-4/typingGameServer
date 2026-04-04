@@ -7,6 +7,8 @@ dotenv.config();
 import { AUTH_COOKIE_NAME, getAuthCookieOptions, getJwtSecret } from '../config/auth.js';
 import { findOrCreateGoogleUser, updateSessionId } from '../models/userModel.js';
 
+console.log('GOOGLE_REDIRECT_URI:', process.env.GOOGLE_REDIRECT_URI);
+
 const oauth2Client = new OAuth2Client(
     process.env.GOOGLE_CLIENT_ID,
     process.env.GOOGLE_CLIENT_SECRET,
