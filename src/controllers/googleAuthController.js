@@ -4,7 +4,7 @@ import crypto from 'crypto';
 import dotenv from 'dotenv';
 dotenv.config();
 
-import { AUTH_COOKIE_NAME, getAuthCookieOptions, getJwtSecret } from '../config/auth.js';
+import { getJwtSecret } from '../config/auth.js';
 import { findOrCreateGoogleUser, updateSessionId } from '../models/userModel.js';
 
 console.log('GOOGLE_REDIRECT_URI:', process.env.GOOGLE_REDIRECT_URI);
@@ -47,9 +47,7 @@ export const googleCallback = async (req, res) => {
             { expiresIn: '7d' }
         );
 
-        res.cookie(AUTH_COOKIE_NAME, token, getAuthCookieOptions());
-
-        res.redirect(`${clientUrl}/Home`);
+        res.redirect(`${clientUrl}/Home?token=${token}`);
     } catch (err) {
         console.error('Google OAuth error:', err.message, err.stack);
         res.redirect(`${clientUrl}/Login?error=${encodeURIComponent(err.message)}`);
