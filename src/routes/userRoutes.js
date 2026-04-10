@@ -21,6 +21,18 @@ const authLimiter = rateLimit({
   legacyHeaders: false,
 });
 
+// Per-user limit for stat submissions. verifyAuthToken runs first and sets
+// req.accountID, so we key on that rather than IP to avoid penalising shared
+// networks (offices, proxies, etc.).
+const statsUpdateLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  limit: 20,
+  keyGenerator: (req) => req.accountID ?? req.ip,
+  message: { error: "Too many stat submissions, please slow down." },
+  standardHeaders: "draft-8",
+  legacyHeaders: false,
+});
+
 export function createUserRouter({
   verifyAuthToken = verifyToken,
   handlers = {
@@ -40,7 +52,7 @@ export function createUserRouter({
   router.post("/signup", authLimiter, handlers.signupUser);
   router.post("/profile/get/userBySession", handlers.getUserBySession);
   router.post("/profile/get", handlers.getUserByID);
-  router.post("/profile/updateStats", verifyAuthToken, handlers.updateUserStats);
+  router.post("/profile/updateStats", verifyAuthToken, statsUpdateLimiter, handlers.updateUserStats);
   router.post("/profile/getStats", verifyAuthToken, handlers.getUserStats);
   router.get("/profile/statsByUsername", handlers.getPlayerStatsByName);
   router.get("/profile/leaderboard", handlers.getLeaderboardHandler);
