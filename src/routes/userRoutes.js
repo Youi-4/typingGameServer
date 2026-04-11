@@ -4,9 +4,11 @@ import rateLimit from "express-rate-limit";
 import {
   getLeaderboardHandler,
   getPlayerStatsByName,
+  getPublicProfile,
   getUserByID,
   getUserBySession,
   getUserStats,
+  setProfile,
   signupUser,
   updateUserStats,
   userLogin,
@@ -44,6 +46,8 @@ export function createUserRouter({
     getUserStats,
     getPlayerStatsByName,
     getLeaderboardHandler,
+    setProfile,
+    getPublicProfile,
   },
 } = {}) {
   const router = express.Router();
@@ -54,8 +58,10 @@ export function createUserRouter({
   router.post("/profile/get", handlers.getUserByID);
   router.post("/profile/updateStats", verifyAuthToken, statsUpdateLimiter, handlers.updateUserStats);
   router.post("/profile/getStats", verifyAuthToken, handlers.getUserStats);
+  router.post("/profile/set", verifyAuthToken, handlers.setProfile);
   router.get("/profile/statsByUsername", handlers.getPlayerStatsByName);
   router.get("/profile/leaderboard", handlers.getLeaderboardHandler);
+  router.get("/profile/public/:username", handlers.getPublicProfile);
 
   return router;
 }

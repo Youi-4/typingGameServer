@@ -171,13 +171,39 @@ export async function findOrCreateGoogleUser({ googleId, email, name }) {
 
 export async function getUserBySessionID(sessionId) {
     try {
-
-        const query = `SELECT "user", emailaddress FROM account WHERE sessionid = $1`;
-        console.log("getting sessionID::::", sessionId);
+        const query = `SELECT "user", emailaddress, bio, avatar_color FROM account WHERE sessionid = $1`;
         const { rows } = await db.query(query, [sessionId]);
         return rows[0] || null;
     } catch (error) {
         console.error("Error fetching user by Session ID: ", error);
         throw new Error("Error fetching user");
+    }
+}
+
+export async function updateProfile(accountId, { bio, avatarColor }) {
+    try {
+        await db.query(
+            `UPDATE account SET bio = $1, avatar_color = $2 WHERE accountid = $3`,
+            [bio ?? null, avatarColor ?? null, accountId]
+        );
+    } catch (error) {
+        console.error("Error updating profile:", error);
+        throw new Error("Error updating profile");
+    }
+}
+
+export async function getPublicProfileByUsername(username) {
+    try {
+        const { rows } = await db.query(`
+            SELECT a."user" AS username, a.bio, a.avatar_color,
+                   s.race_avg, s.race_best, s.race_won, s.race_completed
+            FROM account a
+            LEFT JOIN account_stats s ON s.accountid = a.accountid
+            WHERE a."user" = $1
+        `, [username]);
+        return rows[0] || null;
+    } catch (error) {
+        console.error("Error fetching public profile:", error);
+        throw new Error("Error fetching public profile");
     }
 }

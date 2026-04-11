@@ -10,17 +10,20 @@ import {
 import { toLoginResponseDto } from "../dto/authDto.js";
 import {
   toLeaderboardResponseDto,
+  toPublicProfileDto,
   toStatsResponseDto,
 } from "../dto/statsDto.js";
 import {
   createAccount,
   getLeaderboard,
+  getPublicProfileByUsername,
   getStats,
   getStatsByUsername,
   getUserByAccountID,
   getUserByEmail,
   getUserBySessionID,
   getUserByUserName,
+  updateProfile,
   updateSessionId,
   updateStats,
 } from "../models/userModel.js";
@@ -43,6 +46,8 @@ export function createUserController({
   getUserStatsFromStore = getStats,
   getStatsByUserName = getStatsByUsername,
   getLeaderboardEntries = getLeaderboard,
+  updateProfileInStore = updateProfile,
+  getPublicProfileFromStore = getPublicProfileByUsername,
   comparePassword = bcrypt.compare,
   hashPassword = bcrypt.hash,
   signJwt = jwt.sign,
@@ -237,6 +242,46 @@ export function createUserController({
     }
   };
 
+  const setProfile = async (req, res) => {
+    try {
+      if (!req.accountID) {
+        return res.status(401).json({ error: "Unauthorized" });
+      }
+      const { bio, avatarColor } = req.body;
+      if (bio != null && bio.length > 200) {
+        return res.status(400).json({ error: "Bio must be 200 characters or less." });
+      }
+      if (avatarColor != null && !/^#[0-9a-fA-F]{6}$/.test(avatarColor)) {
+        return res.status(400).json({ error: "Invalid avatar color." });
+      }
+      await updateProfileInStore(req.accountID, { bio, avatarColor });
+      const user = await getUserByAccountId(req.accountID);
+      return res.status(200).json({
+        username: user.user,
+        bio: user.bio ?? null,
+        avatar_color: user.avatar_color ?? null,
+      });
+    } catch (_error) {
+      return res.status(500).json({ error: "Internal server error" });
+    }
+  };
+
+  const getPublicProfile = async (req, res) => {
+    try {
+      const { username } = req.params;
+      if (!username) {
+        return res.status(400).json({ error: "Username required" });
+      }
+      const profile = await getPublicProfileFromStore(username);
+      if (!profile) {
+        return res.status(404).json({ error: "User not found" });
+      }
+      return res.status(200).json({ profile: toPublicProfileDto(profile) });
+    } catch (_error) {
+      return res.status(500).json({ error: "Internal server error" });
+    }
+  };
+
   return {
     userLogin,
     signupUser,
@@ -246,6 +291,8 @@ export function createUserController({
     getUserStats,
     getPlayerStatsByName,
     getLeaderboardHandler,
+    setProfile,
+    getPublicProfile,
   };
 }
 
@@ -260,4 +307,6 @@ export const {
   getUserStats,
   getPlayerStatsByName,
   getLeaderboardHandler,
+  setProfile,
+  getPublicProfile,
 } = userController;

@@ -45,3 +45,17 @@ export function toLeaderboardResponseDto(entries) {
     leaderboard: entries.map(toLeaderboardEntryDto),
   };
 }
+
+export function toPublicProfileDto(profile) {
+  return {
+    username: profile.username,
+    bio: profile.bio ?? null,
+    avatar_color: profile.avatar_color ?? null,
+    stats: {
+      race_avg: Number(profile.race_avg ?? 0),
+      race_best: Number(profile.race_best ?? 0),
+      race_won: Number(profile.race_won ?? 0),
+      race_completed: Number(profile.race_completed ?? 0),
+    },
+  };
+}
