@@ -40,6 +40,27 @@ export function createGameNamespace({
   namespace.on("connection", (socket) => {
     socket.on("join-room", (payload) => {
       onJoinRoom(socket, payload, { roomStore, namespace, leaveCurrentRoom });
+
+      // Broadcast the new player's initial idle state to everyone already in the
+      // room so they appear in the race track immediately, before the countdown
+      // ends and the data-broadcast interval starts.
+      if (socket.currentRoomId) {
+        socket.to(socket.currentRoomId).emit("receive-message", {
+          senderId: socket.id,
+          senderName: socket.username || "Unknown",
+          characterNumber: socket.characterNumber ?? 0,
+          message: "",
+          typeObject: {
+            totalMistakes: 0,
+            WPM: 0,
+            charIndex: 0,
+            charIndexBeforeMistake: 0,
+            mistakes: 0,
+            isActivelyTyping: false,
+            isCompleted: false,
+          },
+        });
+      }
     });
 
     socket.on("leave-room", ({ roomId } = {}) => {

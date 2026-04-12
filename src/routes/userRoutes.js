@@ -5,9 +5,11 @@ import {
   getLeaderboardHandler,
   getPlayerStatsByName,
   getPublicProfile,
+  getRaceHistoryHandler,
   getUserByID,
   getUserBySession,
   getUserStats,
+  saveRaceHistoryHandler,
   setProfile,
   signupUser,
   updateUserStats,
@@ -48,6 +50,8 @@ export function createUserRouter({
     getLeaderboardHandler,
     setProfile,
     getPublicProfile,
+    saveRaceHistoryHandler,
+    getRaceHistoryHandler,
   },
 } = {}) {
   const router = express.Router();
@@ -59,6 +63,8 @@ export function createUserRouter({
   router.post("/profile/updateStats", verifyAuthToken, statsUpdateLimiter, handlers.updateUserStats);
   router.post("/profile/getStats", verifyAuthToken, handlers.getUserStats);
   router.post("/profile/set", verifyAuthToken, handlers.setProfile);
+  router.post("/profile/raceHistory", verifyAuthToken, statsUpdateLimiter, handlers.saveRaceHistoryHandler);
+  router.get("/profile/raceHistory", verifyAuthToken, handlers.getRaceHistoryHandler);
   router.get("/profile/statsByUsername", handlers.getPlayerStatsByName);
   router.get("/profile/leaderboard", handlers.getLeaderboardHandler);
   router.get("/profile/public/:username", handlers.getPublicProfile);

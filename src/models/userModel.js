@@ -192,6 +192,34 @@ export async function updateProfile(accountId, { bio, avatarColor }) {
     }
 }
 
+export async function saveRaceHistory(accountId, wpm, accuracy, mode) {
+    try {
+        await db.query(
+            `INSERT INTO race_history (accountid, wpm, accuracy, mode) VALUES ($1, $2, $3, $4)`,
+            [accountId, wpm, accuracy, mode]
+        );
+    } catch (error) {
+        console.error("Error saving race history:", error);
+        throw new Error("Unable to save race history: " + error.message);
+    }
+}
+
+export async function getRaceHistory(accountId, limit = 50) {
+    try {
+        const { rows } = await db.query(
+            `SELECT wpm, accuracy, mode, created_at
+             FROM race_history
+             WHERE accountid = $1
+             ORDER BY created_at ASC
+             LIMIT $2`,
+            [accountId, limit]
+        );
+        return rows;
+    } catch (error) {
+        throw new Error("Unable to getRaceHistory: " + error.message);
+    }
+}
+
 export async function getPublicProfileByUsername(username) {
     try {
         const { rows } = await db.query(`

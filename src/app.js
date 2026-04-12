@@ -11,6 +11,7 @@ import { createRoomRouter } from "./routes/roomRoutes.js";
 import { socketAuthMiddleware } from "./socket/socketAuth.js";
 import { createPublicGameNamespace } from "./socket/publicGame.js";
 import { createPrivateGameNamespace } from "./socket/privateGame.js";
+import { createNotificationNamespace } from "./socket/notificationNamespace.js";
 
 const BATCH_INTERVAL_MS = 250;
 
@@ -96,6 +97,12 @@ export function createApplicationServer({
     io,
     authMiddleware: socketAuth,
     paragraphs,
+    logger,
+  });
+
+  createNotificationNamespace({
+    io,
+    authMiddleware: socketAuth,
     logger,
   });
 

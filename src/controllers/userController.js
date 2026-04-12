@@ -11,18 +11,21 @@ import { toLoginResponseDto } from "../dto/authDto.js";
 import {
   toLeaderboardResponseDto,
   toPublicProfileDto,
+  toRaceHistoryResponseDto,
   toStatsResponseDto,
 } from "../dto/statsDto.js";
 import {
   createAccount,
   getLeaderboard,
   getPublicProfileByUsername,
+  getRaceHistory,
   getStats,
   getStatsByUsername,
   getUserByAccountID,
   getUserByEmail,
   getUserBySessionID,
   getUserByUserName,
+  saveRaceHistory,
   updateProfile,
   updateSessionId,
   updateStats,
@@ -48,6 +51,8 @@ export function createUserController({
   getLeaderboardEntries = getLeaderboard,
   updateProfileInStore = updateProfile,
   getPublicProfileFromStore = getPublicProfileByUsername,
+  saveRaceHistoryInStore = saveRaceHistory,
+  getRaceHistoryFromStore = getRaceHistory,
   comparePassword = bcrypt.compare,
   hashPassword = bcrypt.hash,
   signJwt = jwt.sign,
@@ -282,6 +287,42 @@ export function createUserController({
     }
   };
 
+  const VALID_MODES = new Set(['multiplayer', 'practice', 'challenge']);
+
+  const saveRaceHistoryHandler = async (req, res) => {
+    try {
+      if (!req.accountID) {
+        return res.status(401).json({ error: "Unauthorized" });
+      }
+      const { wpm, accuracy, mode } = req.body;
+      if (typeof wpm !== 'number' || !Number.isFinite(wpm) || wpm < 0 || wpm > 500) {
+        return res.status(400).json({ error: "Invalid wpm value." });
+      }
+      if (typeof accuracy !== 'number' || !Number.isFinite(accuracy) || accuracy < 0 || accuracy > 100) {
+        return res.status(400).json({ error: "Invalid accuracy value." });
+      }
+      if (!VALID_MODES.has(mode)) {
+        return res.status(400).json({ error: "Invalid mode." });
+      }
+      await saveRaceHistoryInStore(req.accountID, wpm, accuracy, mode);
+      return res.status(201).json({ success: true });
+    } catch (_error) {
+      return res.status(500).json({ error: "Internal server error" });
+    }
+  };
+
+  const getRaceHistoryHandler = async (req, res) => {
+    try {
+      if (!req.accountID) {
+        return res.status(401).json({ error: "Unauthorized" });
+      }
+      const history = await getRaceHistoryFromStore(req.accountID);
+      return res.status(200).json(toRaceHistoryResponseDto(history));
+    } catch (_error) {
+      return res.status(500).json({ error: "Internal server error" });
+    }
+  };
+
   return {
     userLogin,
     signupUser,
@@ -293,6 +334,8 @@ export function createUserController({
     getLeaderboardHandler,
     setProfile,
     getPublicProfile,
+    saveRaceHistoryHandler,
+    getRaceHistoryHandler,
   };
 }
 
@@ -309,4 +352,6 @@ export const {
   getLeaderboardHandler,
   setProfile,
   getPublicProfile,
+  saveRaceHistoryHandler,
+  getRaceHistoryHandler,
 } = userController;

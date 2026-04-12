@@ -46,6 +46,21 @@ export function toLeaderboardResponseDto(entries) {
   };
 }
 
+export function toRaceHistoryEntryDto(entry) {
+  return {
+    wpm: toNumber(entry.wpm),
+    accuracy: toNumber(entry.accuracy),
+    mode: entry.mode,
+    created_at: entry.created_at,
+  };
+}
+
+export function toRaceHistoryResponseDto(entries) {
+  return {
+    history: entries.map(toRaceHistoryEntryDto),
+  };
+}
+
 export function toPublicProfileDto(profile) {
   return {
     username: profile.username,
