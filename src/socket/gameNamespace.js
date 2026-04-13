@@ -81,9 +81,9 @@ export function createGameNamespace({
       }
     });
 
-    socket.on("send-message", ({ message, typeObject }) => {
+    socket.on("send-message", ({ message, typeObject } = {}) => {
       const roomId = socket.currentRoomId;
-      if (!roomId) return;
+      if (!roomId || !typeObject) return;
 
       roomStore.storeLastState(roomId, socket.id, {
         senderId: socket.id,

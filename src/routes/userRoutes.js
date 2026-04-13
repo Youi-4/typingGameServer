@@ -1,5 +1,5 @@
 import express from "express";
-import rateLimit from "express-rate-limit";
+import rateLimit, { ipKeyGenerator } from "express-rate-limit";
 
 import {
   getLeaderboardHandler,
@@ -19,7 +19,7 @@ import { verifyToken } from "../middleware/authMiddleware.js";
 
 const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  limit: 10,
+  limit: process.env.NODE_ENV === "production" ? 10 : 500,
   message: { error: "Too many attempts, please try again later." },
   standardHeaders: "draft-8",
   legacyHeaders: false,
@@ -31,7 +31,7 @@ const authLimiter = rateLimit({
 const statsUpdateLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   limit: 20,
-  keyGenerator: (req) => req.accountID ?? req.ip,
+  keyGenerator: (req) => req.accountID ?? ipKeyGenerator(req),
   message: { error: "Too many stat submissions, please slow down." },
   standardHeaders: "draft-8",
   legacyHeaders: false,

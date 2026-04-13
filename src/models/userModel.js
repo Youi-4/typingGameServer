@@ -103,7 +103,7 @@ export async function getStatsByUsername(username) {
             SELECT s.race_avg, s.race_last, s.race_best, s.race_won, s.race_completed
             FROM account_stats s
             JOIN account a ON a.accountid = s.accountid
-            WHERE a."user" = $1
+            WHERE LOWER(a."user") = LOWER($1)
         `;
         const { rows } = await db.query(query, [username]);
         return rows[0] || null;
@@ -114,8 +114,7 @@ export async function getStatsByUsername(username) {
 
 export async function getUserByUserName(userName) {
     try {
-
-        const query = `SELECT * FROM account WHERE "user" = $1`;
+        const query = `SELECT * FROM account WHERE LOWER("user") = LOWER($1)`;
         const { rows } = await db.query(query, [userName]);
         return rows[0] || null;
     } catch (error) {
@@ -227,7 +226,7 @@ export async function getPublicProfileByUsername(username) {
                    s.race_avg, s.race_best, s.race_won, s.race_completed
             FROM account a
             LEFT JOIN account_stats s ON s.accountid = a.accountid
-            WHERE a."user" = $1
+            WHERE LOWER(a."user") = LOWER($1)
         `, [username]);
         return rows[0] || null;
     } catch (error) {

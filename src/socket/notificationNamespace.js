@@ -51,7 +51,10 @@ export function createNotificationNamespace({ io, authMiddleware, logger = conso
       if (!challengerUsername || !roomId) return;
 
       const challengerSocketId = userSockets.get(challengerUsername);
-      if (!challengerSocketId) return;
+      if (!challengerSocketId) {
+        socket.emit("challenge-error", { error: `${challengerUsername} is no longer online.` });
+        return;
+      }
 
       if (accepted) {
         namespace.to(challengerSocketId).emit("challenge-accepted", { roomId });
