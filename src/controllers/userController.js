@@ -180,21 +180,6 @@ export function createUserController({
     }
   };
 
-  const getUserByID = async (req, res) => {
-    try {
-      const { account_id } = req.body;
-      const user = await getUserByAccountId(account_id);
-
-      if (!user) {
-        return res.status(404).json({ error: "User could not be found." });
-      }
-
-      return res.status(200).json({ user });
-    } catch (_error) {
-      return res.status(500).json({ error: "Internal server error" });
-    }
-  };
-
   const updateUserStats = async (req, res) => {
     try {
       if (!req.accountID) {
@@ -327,7 +312,6 @@ export function createUserController({
     userLogin,
     signupUser,
     getUserBySession,
-    getUserByID,
     updateUserStats,
     getUserStats,
     getPlayerStatsByName,
@@ -345,7 +329,6 @@ export const {
   userLogin,
   signupUser,
   getUserBySession,
-  getUserByID,
   updateUserStats,
   getUserStats,
   getPlayerStatsByName,

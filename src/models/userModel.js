@@ -49,17 +49,12 @@ export async function clearSessionId(accountId) {
 export async function createAccount(emailAddress, password, user, verification) {
     try {
         const query = `INSERT INTO account (emailaddress, password, "user", verificationstatus) VALUES ($1, $2, $3, $4) RETURNING *`;
-        //console.log(emailAddress,password,user,verification)
         const { rows } = await db.query(query, [emailAddress.toLowerCase(), password, user.toLowerCase(), verification]);
-        const query2 = `INSERT INTO account_stats (accountid) VALUES ($1)`
+        const query2 = `INSERT INTO account_stats (accountid) VALUES ($1)`;
+
         await db.query(query2, [rows[0]?.accountid])
 
-        if (rows[0]) {
-            console.log("account made", rows[0]);
-            return rows[0];
-        } else {
-            return null;
-        }
+        return rows[0] || null;
     } catch (error) {
         console.error("Error creating account:", error);
         throw new Error("Unable to create an account: " + error.message)

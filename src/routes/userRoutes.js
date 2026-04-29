@@ -6,7 +6,6 @@ import {
   getPlayerStatsByName,
   getPublicProfile,
   getRaceHistoryHandler,
-  getUserByID,
   getUserBySession,
   getUserStats,
   saveRaceHistoryHandler,
@@ -43,7 +42,6 @@ export function createUserRouter({
     userLogin,
     signupUser,
     getUserBySession,
-    getUserByID,
     updateUserStats,
     getUserStats,
     getPlayerStatsByName,
@@ -59,7 +57,6 @@ export function createUserRouter({
   router.post("/login", authLimiter, handlers.userLogin);
   router.post("/signup", authLimiter, handlers.signupUser);
   router.post("/profile/get/userBySession", handlers.getUserBySession);
-  router.post("/profile/get", handlers.getUserByID);
   router.post("/profile/updateStats", verifyAuthToken, statsUpdateLimiter, handlers.updateUserStats);
   router.post("/profile/getStats", verifyAuthToken, handlers.getUserStats);
   router.post("/profile/set", verifyAuthToken, handlers.setProfile);

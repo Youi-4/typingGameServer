@@ -3,7 +3,6 @@ import rateLimit from "express-rate-limit";
 
 import {
   getGuestToken,
-  getLoggedinUser,
   getSocketToken,
   logout,
   refreshToken,
@@ -24,7 +23,6 @@ export function createAuthRouter({
   verifyAuthToken = verifyToken,
   validateAuth = authValidate,
   handlers = {
-    getLoggedinUser,
     logout,
     refreshToken,
     getSocketToken,
@@ -37,7 +35,6 @@ export function createAuthRouter({
 } = {}) {
   const router = express.Router();
 
-  router.get("/get-loggedin-user", verifyAuthToken, handlers.getLoggedinUser);
   router.get("/status", verifyAuthToken, validateAuth);
   router.post("/logout", verifyAuthToken, handlers.logout);
   router.post("/refresh", refreshLimiter, handlers.refreshToken);

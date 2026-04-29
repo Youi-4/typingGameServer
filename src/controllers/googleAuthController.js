@@ -1,13 +1,9 @@
 import { OAuth2Client } from 'google-auth-library';
 import jwt from 'jsonwebtoken';
 import crypto from 'crypto';
-import dotenv from 'dotenv';
-dotenv.config();
 
 import { getJwtSecret } from '../config/auth.js';
 import { findOrCreateGoogleUser, updateSessionId } from '../models/userModel.js';
-
-console.log('GOOGLE_REDIRECT_URI:', process.env.GOOGLE_REDIRECT_URI);
 
 const oauth2Client = new OAuth2Client(
     process.env.GOOGLE_CLIENT_ID,

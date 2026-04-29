@@ -7,7 +7,6 @@ import {
   getJwtSecret,
 } from "../config/auth.js";
 import {
-  toLoggedInUserResponseDto,
   toRefreshTokenResponseDto,
   toSocketTokenResponseDto,
 } from "../dto/authDto.js";
@@ -24,19 +23,6 @@ export function createAuthController({
   clearAuthCookieOptions = getClearAuthCookieOptions(),
   createGuestId = () => `guest_${Math.random().toString(36).slice(2, 6)}`,
 }) {
-  const getLoggedinUser = async (req, res) => {
-    if (!req.accountID) {
-      return res.status(400).json({ error: "User not logged in" });
-    }
-
-    const user = await getUserByAccountId(req.accountID);
-    if (!user) {
-      return res.status(404).json({ error: "User not found" });
-    }
-
-    return res.status(200).json(toLoggedInUserResponseDto(user));
-  };
-
   const logout = async (req, res) => {
     if (req.accountID) {
       await clearUserSessionId(req.accountID);
@@ -112,7 +98,6 @@ export function createAuthController({
   };
 
   return {
-    getLoggedinUser,
     logout,
     getSocketToken,
     getGuestToken,
@@ -123,7 +108,6 @@ export function createAuthController({
 const authController = createAuthController({});
 
 export const {
-  getLoggedinUser,
   logout,
   getSocketToken,
   getGuestToken,
